@@ -1,0 +1,27 @@
+{
+  "name": "edgetx-lua-extractor",
+  "version": "1.0.0",
+  "description": "Extracts EdgeTX Lua API documentation from C++ source files into structured JSON",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "npx tsx src/index.ts",
+    "build": "npx tsc",
+    "dev": "npx tsx src/index.ts"
+  },
+  "keywords": [
+    "edgetx",
+    "lua",
+    "api",
+    "extractor"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/tinycolor2": "^1.4.6",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "tinycolor2": "^1.6.0"
+  }
+}
