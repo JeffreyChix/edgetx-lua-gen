@@ -353,6 +353,7 @@ function parseModuleAndName(signature: string): {
 export function parseLuadocBlock(
   raw: string,
   sourceFile: string,
+  constantsNames: string[],
 ): LuaFunction | null {
   const segments = splitIntoTagSegments(raw);
 
@@ -361,13 +362,13 @@ export function parseLuadocBlock(
   if (!firstTag) return null;
 
   if (firstTag.tag === "function") {
-    return parseFunctionBlock(segments, sourceFile);
+    return parseFunctionBlock(segments, sourceFile, constantsNames);
   }
 
   // Edge case: In newer edgetx versions,
   // some function definitions in luadocs use the @name tag */
   if (firstTag.tag === "name") {
-    return parseAtNameFunctionBlock(segments, sourceFile);
+    return parseAtNameFunctionBlock(segments, sourceFile, constantsNames);
   }
 
   console.warn(
@@ -383,6 +384,7 @@ export function parseLuadocBlock(
 function parseFunctionBlock(
   segments: TagSegment[],
   sourceFile: string,
+  constantsNames: string[],
 ): LuaFunction | null {
   try {
     const funcSegs = segments.filter((s) => s.tag === "function");
@@ -443,7 +445,7 @@ function parseFunctionBlock(
         type,
         description: cleanDesc,
         optional: sp.optional !== undefined ? sp.optional : isOptional(rawDesc),
-        validFlags: extractFlagReferences(rawDesc),
+        flagHints: extractFlagReferences(rawDesc, constantsNames),
       };
     });
 
@@ -456,7 +458,7 @@ function parseFunctionBlock(
           type,
           description: cleanDesc,
           optional: true,
-          validFlags: extractFlagReferences(rawDesc),
+          flagHints: extractFlagReferences(rawDesc, constantsNames),
         });
       }
     }
@@ -470,7 +472,7 @@ function parseFunctionBlock(
         type,
         description: cleanDesc,
         optional: false,
-        validFlags: extractFlagReferences(ovpRawDesc),
+        flagHints: extractFlagReferences(ovpRawDesc, constantsNames),
       });
     }
 
@@ -559,6 +561,7 @@ function parseFunctionBlock(
 function parseAtNameFunctionBlock(
   segments: TagSegment[],
   sourceFile: string,
+  constantsNames: string[],
 ): LuaFunction | null {
   try {
     const functionNameSegs = segments.filter((s) => s.tag === "name");
@@ -618,7 +621,7 @@ function parseAtNameFunctionBlock(
           description: "",
           optional: true,
           type: "unknown",
-          validFlags: [],
+          flagHints: [],
         };
       }
 
@@ -629,7 +632,7 @@ function parseAtNameFunctionBlock(
         description: foundArg[0].value,
         optional: isOptional(foundArg[0].others),
         type,
-        validFlags: [],
+        flagHints: extractFlagReferences(foundArg[0].value, constantsNames),
       };
     });
 
@@ -693,20 +696,7 @@ export function parseSourceFile(
 ): { functions: LuaFunction[]; constants: LuaConstant[] } {
   const functions: LuaFunction[] = [];
 
-  // 1. Parse all luadoc blocks
-  const blocks = extractLuadocBlocks(source);
-  console.log(`  Found ${blocks.length} luadoc blocks`);
-
-  for (const block of blocks) {
-    const result = parseLuadocBlock(block, sourceFile);
-    if (!result) continue;
-
-    if (result.entityType === "function") {
-      functions.push(result);
-    }
-  }
-
-  // 2. Scan {} and LROT_NUMENTRY / LROT_LUDENTRY macros for constants
+  // 1. Scan {} and LROT_NUMENTRY / LROT_LUDENTRY macros for constants
   let constants: LuaConstant[] = [];
   if (
     versionGte(version, "2.11") ||
@@ -725,6 +715,21 @@ export function parseSourceFile(
     );
 
     constants = parseConstants(constantSegments, sourceFile);
+  }
+
+  // 2. Parse all luadoc blocks
+  const blocks = extractLuadocBlocks(source);
+  console.log(`  Found ${blocks.length} luadoc blocks`);
+
+  const constantsNames = constants.map((c) => c.name);
+
+  for (const block of blocks) {
+    const result = parseLuadocBlock(block, sourceFile, constantsNames);
+    if (!result) continue;
+
+    if (result.entityType === "function") {
+      functions.push(result);
+    }
   }
 
   console.log(

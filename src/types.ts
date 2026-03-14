@@ -32,7 +32,7 @@ export interface LuaParam {
   type: LuaValueType;
   description: string;
   optional: boolean;
-  validFlags: string[]; // e.g. ["BOLD", "BLINK", "LEFT"]
+  flagHints: string[]; // e.g. ["BOLD", "BLINK", "LEFT"]
 }
 
 export interface LuaReturn {

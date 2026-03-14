@@ -11,6 +11,7 @@ stubs/
 
 # Personal
 todo.txt
+test.lua
 
 # Environment
 .env

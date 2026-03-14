@@ -2,13 +2,15 @@
  * stubgen.ts
  *
  * Reads the EdgeTX Lua API JSON (produced by index.ts) and emits a set of
- * lua-language-server (sumneko) annotation files (.lua) that give VS Code
- * full intellisense: hover docs, parameter hints, return types, and
+ * lua-language-server (LuaLS / sumneko) annotation files (.lua) that give
+ * VS Code full IntelliSense: hover docs, parameter hints, return types, and
  * constant completion.
+ *
+ * Annotation spec: https://luals.github.io/wiki/annotations/
  *
  * Output layout (all under --outDir, default ./stubs/):
  *
- *   edgetx.globals.lua    – global functions (module == "general")
+ *   edgetx.globals.lua    – global functions  (module == "general")
  *   edgetx.lcd.lua        – lcd.* namespace
  *   edgetx.model.lua      – model.* namespace
  *   edgetx.Bitmap.lua     – Bitmap.* namespace
@@ -20,128 +22,46 @@
 
 import * as fs from "fs";
 import * as path from "path";
+import { LuaFunction, LuaConstant, LuaReturn, ApiDoc } from "./types";
 
-// ─── Types (matches types.ts output) ─────────────────────────────────────────
-
-interface TableField {
-  name: string;
-  type: string;
-  description: string;
-}
-
-interface LuaParam {
-  name: string;
-  type: string;
-  description: string;
-  optional: boolean;
-  validFlags: string[];
-}
-
-interface LuaReturn {
-  name: string;
-  type: string;
-  description: string;
-  fields?: TableField[];
-}
-
-interface LuaFunction {
-  entityType: "function";
-  module: string;
-  name: string;
-  signature: string;
-  description: string;
-  parameters: LuaParam[];
-  returns: LuaReturn[];
-  notices: string[];
-  status: string;
-  deprecated: boolean;
-  sourceFile: string;
-}
-
-interface LuaConstant {
-  entityType: "constant";
-  module: string;
-  name: string;
-  description: string;
-  group: string;
-  sourceFile: string;
-}
-
-interface ApiDoc {
-  version: string;
-  generated: string;
-  functions: LuaFunction[];
-  constants: LuaConstant[];
-}
-
-// ─── LuaLS type mapping ───────────────────────────────────────────────────────
-// Converts our internal type strings to valid LuaLS annotation types.
-// Union types like "string|number" pass through unchanged — LuaLS supports them.
+const TYPE_MAP: Record<string, string> = {
+  nil: "nil",
+  boolean: "boolean",
+  number: "number",
+  integer: "integer",
+  string: "string",
+  table: "table",
+  function: "fun()",
+  thread: "thread",
+  userdata: "userdata",
+  mixed: "any",
+  unknown: "any",
+};
 
 function toLuaType(t: string): string {
   if (!t || t === "unknown") return "any";
-  // Map individual parts of a union
   return t
     .split("|")
-    .map((part) => {
-      const p = part.trim().toLowerCase();
-      if (p === "nil") return "nil";
-      if (p === "boolean") return "boolean";
-      if (p === "number") return "number";
-      if (p === "string") return "string";
-      if (p === "table") return "table";
-      if (p === "function") return "fun()";
-      if (p === "mixed") return "any";
-      if (p === "unknown") return "any";
-      return part.trim(); // preserve as-is (e.g. user-defined class names)
-    })
+    .map((part) => TYPE_MAP[part.trim().toLowerCase()] ?? part.trim())
     .join("|");
 }
 
-// ─── Text helpers ─────────────────────────────────────────────────────────────
-
-/** Wrap text to at most maxWidth characters per line, indent subsequent lines. */
-function wrapText(text: string, indent: string, maxWidth = 100): string {
-  // Preserve existing line breaks
-  const lines = text.split("\n");
-  const result: string[] = [];
-  for (const line of lines) {
-    if (line.length + indent.length <= maxWidth) {
-      result.push(indent + line);
-      continue;
-    }
-    // Hard-wrap long lines at word boundaries
-    const words = line.split(" ");
-    let current = indent;
-    for (const word of words) {
-      if (current.length + word.length + 1 > maxWidth && current.trim() !== "") {
-        result.push(current.trimEnd());
-        current = indent + word + " ";
-      } else {
-        current += word + " ";
-      }
-    }
-    if (current.trim()) result.push(current.trimEnd());
-  }
-  return result.join("\n");
-}
-
-/** Escape special characters in description text for use in Lua comments. */
 function sanitizeDesc(desc: string): string {
-  return desc
-    .replace(/\r/g, "")
-    .replace(/--/g, "- -") // avoid Lua comment terminators
-    .trim();
+  return desc.replace(/\r/g, "").replace(/--/g, "- -").trim();
 }
 
-// ─── Class name generator for table return types ──────────────────────────────
+function emitDescLines(desc: string): string[] {
+  const lines: string[] = [];
+  for (const line of desc.split("\n")) {
+    // if (line.startsWith("```") || line.startsWith("| ")) break;
+    lines.push(`--- ${line}`);
+  }
+  return lines;
+}
 
 /**
- * When a function returns a table with known fields, we emit a ---@class
- * definition so LuaLS shows field completion on the return value.
- *
- * Class name:  ModuleName_FunctionName_Return[N]
- * e.g.  general_getDateTime_Return, model_getMix_Return
+ * Builds a unique LuaLS class name for a table-typed return value.
+ * e.g. `General_getDateTime_Return`, `Model_getMix_Return2`
  */
 function makeClassName(fn: LuaFunction, returnIndex: number): string {
   const mod = fn.module.charAt(0).toUpperCase() + fn.module.slice(1);
@@ -149,316 +69,275 @@ function makeClassName(fn: LuaFunction, returnIndex: number): string {
   return `${mod}_${fn.name}_${suffix}`;
 }
 
-// ─── Code-gen helpers ─────────────────────────────────────────────────────────
+/** Emit `---@class` blocks for any table return with known fields. */
+function emitClassDefs(fn: LuaFunction): string[] {
+  const lines: string[] = [];
 
-/** Emit ---@class blocks for all table returns with known fields. */
-function emitClassDefs(fn: LuaFunction): string {
-  const out: string[] = [];
   for (let i = 0; i < fn.returns.length; i++) {
     const ret = fn.returns[i]!;
-    if (ret.type !== "table" || !ret.fields || ret.fields.length === 0) continue;
+    if (ret.type !== "table" || !ret.fields?.length) continue;
 
     const className = makeClassName(fn, i);
-    out.push(`---@class ${className}`);
+    lines.push(`---@class (exact) ${className}`);
+
     for (const field of ret.fields) {
       const fieldType = toLuaType(field.type);
       const fieldDesc = sanitizeDesc(field.description);
-      if (fieldDesc) {
-        out.push(`---@field ${field.name} ${fieldType} ${fieldDesc}`);
-      } else {
-        out.push(`---@field ${field.name} ${fieldType}`);
-      }
+      lines.push(
+        fieldDesc
+          ? `---@field ${field.name} ${fieldType} ${fieldDesc}`
+          : `---@field ${field.name} ${fieldType}`,
+      );
     }
-    out.push("");
+
+    lines.push("");
   }
-  return out.join("\n");
+
+  return lines;
 }
 
-/** Determine the LuaLS return type string for a single LuaReturn entry. */
-function returnTypeStr(fn: LuaFunction, ret: LuaReturn, retIdx: number): string {
-  if (ret.type === "table" && ret.fields && ret.fields.length > 0) {
-    return makeClassName(fn, retIdx);
-  }
+function returnTypeStr(fn: LuaFunction, ret: LuaReturn, idx: number): string {
+  if (ret.type === "table" && ret.fields?.length) return makeClassName(fn, idx);
   return toLuaType(ret.type);
 }
 
-/** Emit the full annotation block + stub for a single function. */
+function emitParams(params: LuaFunction["parameters"]): string[] {
+  const lines: string[] = [];
+
+  for (const param of params) {
+    if (/[:(]/.test(param.name)) continue; // skip parser artefacts
+
+    const paramName = param.name.replace(/ +/g, "_");
+    const pType = toLuaType(param.type);
+    const optMark = param.optional ? "?" : "";
+    const desc = sanitizeDesc(param.description);
+
+    const [firstLine, ...restLines] = desc.split("\n");
+    lines.push(
+      firstLine
+        ? `---@param ${paramName}${optMark} ${pType} ${firstLine}`
+        : `---@param ${paramName}${optMark} ${pType}`,
+    );
+    for (const l of restLines) lines.push(`--- ${l}`);
+
+    if (param.flagHints.length > 0) {
+      lines.push(`--- <br>**Flag hints:** ${param.flagHints.join(", ")}<br>`);
+    }
+  }
+
+  return lines;
+}
+
+function emitReturns(fn: LuaFunction): string[] {
+  if (fn.returns.length === 0) return [];
+  const lines: string[] = [];
+
+  for (let i = 0; i < fn.returns.length; i++) {
+    const ret = fn.returns[i]!;
+    const rType = returnTypeStr(fn, ret, i);
+
+    const rName = ret.name?.replace(/[^a-zA-Z0-9_]/g, "_") ?? "";
+    const desc = sanitizeDesc(ret.description);
+    const [firstLine, ...restLines] = desc.split("\n");
+
+    const namePart = rName ? ` ${rName}` : "";
+    const descPart = firstLine ? ` # ${firstLine}` : "";
+    lines.push(`---@return ${rType}${namePart}${descPart}`);
+    for (const l of restLines) lines.push(`--- ${l}`);
+  }
+
+  return lines;
+}
+
+function emitOverloads(fn: LuaFunction): string[] {
+  if (!fn.overloadParameters?.length) return [];
+  const lines: string[] = [];
+
+  const returnPart =
+    fn.returns.length > 0
+      ? `: ${fn.returns.map((r, i) => returnTypeStr(fn, r, i)).join(", ")}`
+      : "";
+
+  for (const param of fn.overloadParameters) {
+    const paramName = param.name.replace(/ +/g, "_");
+    const pType = toLuaType(param.type);
+    const optMark = param.optional ? "?" : "";
+    const desc = sanitizeDesc(param.description);
+
+    const [firstLine, ...restLines] = desc.split("\n");
+    lines.push(
+      firstLine
+        ? `---@param ${paramName}${optMark} ${pType} ${firstLine}`
+        : `---@param ${paramName}${optMark} ${pType}`,
+    );
+    for (const l of restLines) lines.push(`--- ${l}`);
+
+    if (param.flagHints?.length) {
+      lines.push(`--- <br><br>**Flag hints:** ${param.flagHints.join(", ")}<br><br>`);
+    }
+
+    lines.push(
+      `---@overload fun(${paramName}${optMark}: ${pType})${returnPart}`,
+    );
+  }
+
+  return lines;
+}
+
 function emitFunction(fn: LuaFunction, nsPrefix: string): string {
   const lines: string[] = [];
 
-  // ── class definitions for table return types ──
-  const classDefs = emitClassDefs(fn);
-  if (classDefs) lines.push(classDefs);
+  lines.push(...emitClassDefs(fn));
 
-  // ── doc comment ──────────────────────────────
-  // Description
   const desc = sanitizeDesc(fn.description);
   if (desc) {
-    const descLines = desc.split("\n");
-    // First line(s) — trim markdown code fences for brevity
-    for (const dl of descLines) {
-      if (dl.startsWith("```")) break; // stop before code blocks
-      if (dl.startsWith("| ")) break;  // stop before markdown tables
-      lines.push(`--- ${dl}`);
-    }
+    lines.push(...emitDescLines(desc));
     lines.push("---");
   }
 
-  // Status / version
-  if (fn.status) {
-    const cleanStatus = sanitizeDesc(fn.status)
-      .split("\n")[0]! // first line only
-      .replace(/^current\s*/i, "")
-      .trim();
-    if (cleanStatus) lines.push(`--- **Status:** ${cleanStatus}`);
+  if (fn.sinceVersion) {
+    lines.push(`--- **Since:** ${sanitizeDesc(fn.sinceVersion)}`);
   }
 
-  // Notices
-  for (const notice of fn.notices) {
-    const n = sanitizeDesc(notice).split("\n")[0]!;
-    lines.push(`--- **Notice:** ${n}`);
+  for (const notice of fn.notices ?? []) {
+    const [first, ...rest] = sanitizeDesc(notice).split("\n");
+    lines.push(`--- > **Notice:** ${first}`);
+    for (const l of rest) lines.push(`--- > ${l}`);
   }
 
-  // Deprecated
-  if (fn.deprecated) {
-    lines.push("---@deprecated");
-  }
+  if (fn.deprecated) lines.push("---@deprecated");
 
-  // Parameters
-  for (const param of fn.parameters) {
-    // Skip malformed param names that contain ':' or '(' (parser artefacts)
-    if (/[:(]/.test(param.name)) continue;
+  lines.push(...emitParams(fn.parameters));
+  lines.push(...emitOverloads(fn));
+  lines.push(...emitReturns(fn));
 
-    const pType = toLuaType(param.type);
-    const pDesc = sanitizeDesc(param.description).split("\n")[0]!;
-    const optMark = param.optional ? "?" : "";
+  const validParams = fn.parameters
+    .filter((p) => !/[:(]/.test(p.name))
+    .map((p) => p.name.replace(/ +/g, "_"))
+    .join(", ");
 
-    // validFlags hint
-    const flagHint =
-      param.validFlags.length > 0
-        ? ` (flags: ${param.validFlags.join(", ")})`
-        : "";
-
-    if (pDesc || flagHint) {
-      lines.push(`---@param ${param.name}${optMark} ${pType} ${pDesc}${flagHint}`);
-    } else {
-      lines.push(`---@param ${param.name}${optMark} ${pType}`);
-    }
-  }
-
-  // Return values
-  if (fn.returns.length === 0) {
-    // no explicit return — omit @return (void is implied)
-  } else if (fn.returns.length === 1) {
-    const ret = fn.returns[0]!;
-    const rType = returnTypeStr(fn, ret, 0);
-    const rDesc = sanitizeDesc(ret.description).split("\n")[0]!;
-    if (rDesc) {
-      lines.push(`---@return ${rType} # ${rDesc}`);
-    } else {
-      lines.push(`---@return ${rType}`);
-    }
-  } else {
-    // Multiple return values: emit one @return per value
-    for (let i = 0; i < fn.returns.length; i++) {
-      const ret = fn.returns[i]!;
-      const rType = returnTypeStr(fn, ret, i);
-      const rName = ret.name.replace(/[^a-zA-Z0-9_]/g, "_"); // sanitize for LuaLS
-      const rDesc = sanitizeDesc(ret.description).split("\n")[0]!;
-      if (rDesc) {
-        lines.push(`---@return ${rType} ${rName} ${rDesc}`);
-      } else {
-        lines.push(`---@return ${rType} ${rName}`);
-      }
-    }
-  }
-
-  // ── function stub ────────────────────────────
-  // Build the param list from the LuaParam array (skip malformed names)
-  const validParams = fn.parameters.filter((p) => !/[:(]/.test(p.name));
-  const paramList = validParams.map((p) => p.name).join(", ");
-
-  lines.push(`function ${nsPrefix}${fn.name}(${paramList}) end`);
+  lines.push(`function ${nsPrefix}${fn.name}(${validParams}) end`);
   lines.push("");
 
   return lines.join("\n");
 }
 
-// ─── File writer ──────────────────────────────────────────────────────────────
-
-interface FileSpec {
-  filename: string;
-  header: string;
-  body: string;
-}
-
-function buildFile(spec: FileSpec): string {
+function buildFile(header: string, body: string): string {
   return [
-    "-- This file is AUTO-GENERATED by stubgen.ts — do not edit manually.",
-    `-- EdgeTX Lua API stubs for lua-language-server (sumneko)`,
-    `-- ${spec.header}`,
+    "---@meta _",
     "",
-    spec.body,
+    "--- AUTO-GENERATED BY stubgen.ts — DO NOT EDIT MANUALLY.",
+    `--- EdgeTX Lua API stubs for lua-language-server (LuaLS)`,
+    `--- ${header}`,
+    "",
+    body,
   ].join("\n");
 }
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
+function titleCase(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
 
-function main() {
-  // Parse CLI args
-  const args = process.argv.slice(2);
-  const getArg = (flag: string, def: string) => {
-    const idx = args.indexOf(flag);
-    return idx !== -1 && args[idx + 1] ? args[idx + 1]! : def;
-  };
+/** Write a namespaced module file (lcd, model, Bitmap, …). */
+function writeModuleFile(
+  fns: LuaFunction[],
+  mod: string,
+  nsName: string,
+  outDir: string,
+  headerDesc: string,
+): void {
+  // (exact) prevents LuaLS from allowing arbitrary field injection
+  let body = `---@class (exact) ${nsName}Lib\n${nsName} = {}\n\n`;
+  for (const fn of fns) body += emitFunction(fn, `${nsName}.`);
 
-  const inputFile = getArg("--input", "output/edgetx-lua-api.json");
-  const outDir = getArg("--outDir", "stubs");
+  const content = buildFile(headerDesc, body);
+  const outPath = path.join(outDir, `edgetx.${mod}.lua`);
+  fs.writeFileSync(outPath, content, "utf8");
+  console.log(`  Wrote ${outPath}  (${fns.length} functions)`);
+}
 
-  if (!fs.existsSync(inputFile)) {
-    console.error(`Input file not found: ${inputFile}`);
-    console.error(
-      `Run the extractor first: npx tsx src/index.ts --out output/edgetx-lua-api.json`
-    );
-    process.exit(1);
-  }
-
-  const api: ApiDoc = JSON.parse(fs.readFileSync(inputFile, "utf8"));
+export function generateStubs(api: ApiDoc, outDir: string) {
   fs.mkdirSync(outDir, { recursive: true });
-
   console.log(
-    `Generating stubs from ${api.functions.length} functions and ${api.constants.length} constants...`
+    `Generating stubs: ${api.functions.length} functions, ${api.constants.length} constants...`,
   );
 
-  // ── Group functions by module ─────────────────────────────────────────────
   const byModule = new Map<string, LuaFunction[]>();
   for (const fn of api.functions) {
     const mod = fn.module.toLowerCase();
-    if (!byModule.has(mod)) byModule.set(mod, []);
-    byModule.get(mod)!.push(fn);
+    const bucket = byModule.get(mod) ?? [];
+    bucket.push(fn);
+    byModule.set(mod, bucket);
   }
 
-  // ── 1. Global functions (module == "general") ─────────────────────────────
+  // ── 1. Global functions ──────────────────────────────────────────────────
   {
     const fns = byModule.get("general") ?? [];
     let body = "";
-    for (const fn of fns) {
-      body += emitFunction(fn, ""); // no namespace prefix
-    }
-    const content = buildFile({
-      filename: "edgetx.globals.lua",
-      header: "Global functions available in all EdgeTX Lua scripts",
-      body,
-    });
+    for (const fn of fns) body += emitFunction(fn, "");
+
     const outPath = path.join(outDir, "edgetx.globals.lua");
-    fs.writeFileSync(outPath, content, "utf8");
+    fs.writeFileSync(
+      outPath,
+      buildFile("Global functions available in all EdgeTX Lua scripts", body),
+      "utf8",
+    );
     console.log(`  Wrote ${outPath}  (${fns.length} functions)`);
   }
 
-  // ── 2. lcd.* namespace ────────────────────────────────────────────────────
-  {
-    const fns = byModule.get("lcd") ?? [];
-    let body = "---@class lcdLib\nlcd = {}\n\n";
-    for (const fn of fns) {
-      body += emitFunction(fn, "lcd.");
-    }
-    const content = buildFile({
-      filename: "edgetx.lcd.lua",
-      header: "lcd.* LCD drawing functions",
-      body,
-    });
-    const outPath = path.join(outDir, "edgetx.lcd.lua");
-    fs.writeFileSync(outPath, content, "utf8");
-    console.log(`  Wrote ${outPath}  (${fns.length} functions)`);
+  // ── 2–4. Known namespaced modules ────────────────────────────────────────
+  const KNOWN_MODULES: Record<string, { nsName: string; desc: string }> = {
+    lcd: { nsName: "lcd", desc: "lcd.* LCD drawing functions" },
+    model: { nsName: "model", desc: "model.* model configuration functions" },
+    bitmap: {
+      nsName: "Bitmap",
+      desc: "Bitmap.* bitmap manipulation functions",
+    },
+  };
+
+  for (const [mod, { nsName, desc }] of Object.entries(KNOWN_MODULES)) {
+    writeModuleFile(byModule.get(mod) ?? [], mod, nsName, outDir, desc);
   }
 
-  // ── 3. model.* namespace ──────────────────────────────────────────────────
-  {
-    const fns = byModule.get("model") ?? [];
-    let body = "---@class modelLib\nmodel = {}\n\n";
-    for (const fn of fns) {
-      body += emitFunction(fn, "model.");
-    }
-    const content = buildFile({
-      filename: "edgetx.model.lua",
-      header: "model.* model configuration functions",
-      body,
-    });
-    const outPath = path.join(outDir, "edgetx.model.lua");
-    fs.writeFileSync(outPath, content, "utf8");
-    console.log(`  Wrote ${outPath}  (${fns.length} functions)`);
-  }
-
-  // ── 4. Bitmap.* namespace ─────────────────────────────────────────────────
-  {
-    const fns = byModule.get("bitmap") ?? [];
-    let body = "---@class BitmapLib\nBitmap = {}\n\n";
-    for (const fn of fns) {
-      body += emitFunction(fn, "Bitmap.");
-    }
-    const content = buildFile({
-      filename: "edgetx.Bitmap.lua",
-      header: "Bitmap.* bitmap manipulation functions",
-      body,
-    });
-    const outPath = path.join(outDir, "edgetx.Bitmap.lua");
-    fs.writeFileSync(outPath, content, "utf8");
-    console.log(`  Wrote ${outPath}  (${fns.length} functions)`);
-  }
-
-  // ── 5. Any other modules (future-proofing) ────────────────────────────────
-  const knownModules = new Set(["general", "lcd", "model", "bitmap"]);
+  // ── 5. Any unknown future modules ────────────────────────────────────────
+  const handledModules = new Set(["general", ...Object.keys(KNOWN_MODULES)]);
   for (const [mod, fns] of byModule) {
-    if (knownModules.has(mod)) continue;
-    const ns = mod.charAt(0).toUpperCase() + mod.slice(1);
-    let body = `---@class ${ns}Lib\n${ns} = {}\n\n`;
-    for (const fn of fns) {
-      body += emitFunction(fn, `${ns}.`);
-    }
-    const content = buildFile({
-      filename: `edgetx.${mod}.lua`,
-      header: `${ns}.* functions`,
-      body,
-    });
-    const outPath = path.join(outDir, `edgetx.${mod}.lua`);
-    fs.writeFileSync(outPath, content, "utf8");
-    console.log(`  Wrote ${outPath}  (${fns.length} functions)`);
+    if (handledModules.has(mod)) continue;
+    const nsName = titleCase(mod);
+    writeModuleFile(fns, mod, nsName, outDir, `${nsName}.* functions`);
   }
 
-  // ── 6. Constants ──────────────────────────────────────────────────────────
+  // ── 6. Constants ─────────────────────────────────────────────────────────
   {
-    // Group by source module for a clean header comment
     const groups = new Map<string, LuaConstant[]>();
     for (const c of api.constants) {
-      const g = c.module;
-      if (!groups.has(g)) groups.set(g, []);
-      groups.get(g)!.push(c);
+      const bucket = groups.get(c.module) ?? [];
+      bucket.push(c);
+      groups.set(c.module, bucket);
     }
 
     let body = "";
     for (const [groupName, consts] of groups) {
-      body += `-- ── ${groupName} constants ${"─".repeat(Math.max(0, 50 - groupName.length))}\n\n`;
+      const rule = "─".repeat(Math.max(0, 50 - groupName.length));
+      body += `-- ── ${groupName} constants ${rule}\n\n`;
       for (const c of consts) {
-        if (c.description) {
-          body += `--- ${sanitizeDesc(c.description)}\n`;
-        }
-        // All EdgeTX constants are integers at runtime
-        body += `---@type number\n`;
+        if (c.description) body += `--- ${sanitizeDesc(c.description)}\n`;
+        // EdgeTX constants are always integers at runtime
+        body += `---@type integer\n`;
         body += `${c.name} = 0\n\n`;
       }
     }
 
-    const content = buildFile({
-      filename: "edgetx.constants.lua",
-      header: `All EdgeTX constants (${api.constants.length} total)`,
-      body,
-    });
     const outPath = path.join(outDir, "edgetx.constants.lua");
-    fs.writeFileSync(outPath, content, "utf8");
+    fs.writeFileSync(
+      outPath,
+      buildFile(`All EdgeTX constants (${api.constants.length} total)`, body),
+      "utf8",
+    );
     console.log(`  Wrote ${outPath}  (${api.constants.length} constants)`);
   }
 
-  // ── 7. .luarc.json helper ─────────────────────────────────────────────────
+  // ── 7. .luarc.json ───────────────────────────────────────────────────────
   {
     const luarc = {
       $schema:
@@ -467,20 +346,41 @@ function main() {
         library: [outDir],
         checkThirdParty: false,
       },
-      runtime: {
-        version: "Lua 5.2",
-      },
+      runtime: { version: "Lua 5.2" },
       diagnostics: {
         globals: ["lcd", "model", "Bitmap"],
       },
     };
+
     const outPath = path.join(outDir, ".luarc.json");
     fs.writeFileSync(outPath, JSON.stringify(luarc, null, 2), "utf8");
     console.log(`  Wrote ${outPath}`);
   }
 
-  console.log(`\nDone! Add this to your project's .luarc.json workspace.library:\n`);
+  console.log(`\nDone! Add to your .luarc.json:\n`);
   console.log(`  "${path.resolve(outDir)}"\n`);
 }
 
-main();
+function main() {
+  const args = process.argv.slice(2);
+  const getArg = (flag: string, def: string): string => {
+    const idx = args.indexOf(flag);
+    return idx !== -1 && args[idx + 1] ? args[idx + 1]! : def;
+  };
+
+  const inputFile = getArg("--input", "output/main/edgetx-lua-api.json");
+  const outDir = getArg("--outDir", "stubs");
+
+  if (!fs.existsSync(inputFile)) {
+    console.error(`Input file not found: ${inputFile}`);
+    console.error(`Run: npx tsx src/index.ts --out output/edgetx-lua-api.json`);
+    process.exit(1);
+  }
+
+  const api: ApiDoc = JSON.parse(fs.readFileSync(inputFile, "utf8"));
+  generateStubs(api, outDir);
+}
+
+if (require.main === module) {
+  main();
+}

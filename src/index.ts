@@ -1,13 +1,6 @@
-#!/usr/bin/env node
 // EdgeTX Lua API Extractor
 // Fetches EdgeTX C++ source files, parses /*luadoc */ blocks and C++ registration
 // tables, and writes a single structured JSON file for use in IDE tooling.
-
-// Usage:
-//   npx tsx src/index.ts                    # fetch from GitHub + write output/main/edgetx-lua-api.json
-//   npx tsx src/index.ts --outDir dist      # custom output directory
-//   npx tsx src/index.ts --version 2.9 --version 2.10        # tag the output with a version string
-//   npx tsx src/index.ts --version all      # get all versions including the latest from v2.3
 
 import * as fs from "fs";
 import * as path from "path";
@@ -29,20 +22,21 @@ import {
   splitIntoScreenTypeSegments,
   versionLte,
 } from "./helpers";
+import { generateStubs } from "./stubgen";
 
-async function parseArgs(): Promise<{
-  outDir: string;
-  versions: string[];
-}> {
+async function parseArgs() {
   const args = process.argv.slice(2);
   let outDir = "output";
   let versions: string[] = [];
+  let withStubs = false;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--outDir" && args[i + 1]) {
       outDir = args[++i];
     } else if (args[i] === "--version" && args[i + 1]) {
       versions.push(args[++i]);
+    } else if (args[i] === "--withStubs") {
+      withStubs = true;
     }
   }
 
@@ -55,9 +49,8 @@ async function parseArgs(): Promise<{
     versions = await fetchAllEdgeTxVersions();
   }
 
-  return { outDir, versions };
+  return { outDir, versions, withStubs };
 }
-
 
 function deduplicateFunctions(
   functions: LuaFunction[],
@@ -133,7 +126,7 @@ function deduplicateConstants(constants: LuaConstant[]): LuaConstant[] {
 }
 
 async function main() {
-  const { outDir: outputDirectory, versions } = await parseArgs();
+  const { outDir: outputDirectory, versions, withStubs } = await parseArgs();
 
   for (const version of versions) {
     const allFunctions: LuaFunction[] = [];
@@ -203,6 +196,10 @@ async function main() {
     console.log(`   Functions : ${functions.length}`);
     console.log(`   Constants : ${constants.length}`);
     console.log(`   Output    : ${path.resolve(outFile)}`);
+
+    if (withStubs) {
+      generateStubs(apiDoc, path.join(outDir, "stubs"));
+    }
   }
 
   console.log("\n✅ Done");
