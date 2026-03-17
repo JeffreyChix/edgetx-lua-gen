@@ -205,7 +205,7 @@ async function main() {
     console.log(`   Output    : ${path.resolve(outFile)}`);
 
     if (withStubs) {
-      const { files, stubHash } = generateStubs(apiDoc, outDir);
+      const { files, stubHash } = generateStubs(apiDoc, outDir, version);
 
       stubManifest[version].stubHash = stubHash;
       stubManifest[version].files = [...files, "edgetx-lua-api.json"];

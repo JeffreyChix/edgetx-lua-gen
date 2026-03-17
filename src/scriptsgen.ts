@@ -1,0 +1,113 @@
+import * as fs from "fs";
+import * as path from "path";
+import { sharedTypes, scriptTypes, scriptStructures } from "./scriptTypes";
+import { versionGte, versionLte } from "./helpers";
+import type { LuaStructure, ScriptVersion } from "./types";
+
+function findVersionEntry(version: string): (entry: ScriptVersion) => boolean {
+  return (entry) => {
+    const fromOk = versionGte(version, entry.from);
+    const toOk = entry.to === null || versionLte(version, entry.to);
+    return fromOk && toOk;
+  };
+}
+
+function emitSharedTypes(): string {
+  let out = "";
+
+  for (const [typeName, typeDef] of Object.entries(sharedTypes)) {
+    out += `--- ${typeDef.description.replace(/\n/g, "\n--- ")}\n`;
+    out += `---@class ${typeName}\n`;
+
+    for (const [fieldName, field] of Object.entries(typeDef.fields)) {
+      const optionalMark = field.optional ? "?" : "";
+      out += `--- ${field.description.replace(/\n/g, "\n--- ")}\n`;
+      out += `---@field ${fieldName}${optionalMark} ${field.type}\n`;
+    }
+
+    out += "\n";
+  }
+
+  return out;
+}
+
+function emitScriptType(typeName: string, version: string): string {
+  const scriptType = scriptTypes[typeName];
+  const entry = scriptType.versions.find(findVersionEntry(version));
+
+  // this script type does not exist in this version
+  if (!entry) return "";
+
+  let out = "";
+
+  // class description
+  out += `--- ${scriptType.description}\n`;
+
+  // notices as warnings
+  for (const notice of scriptType.notices) {
+    out += `--- >⚠️ ${notice}<br>\n`;
+  }
+
+  const className = `${typeName.charAt(0).toUpperCase() + typeName.slice(1)}Script`;
+  out += `---@class (exact) ${className}\n`;
+
+  for (const [fieldName, field] of Object.entries(entry.fields)) {
+    out += `--- ${field.description.replace(/\n/g, "\n--- ")}\n`;
+
+    // optional fields use fieldName? syntax
+    const optionalMark = field.optional ? "?" : "";
+    out += `---@field ${fieldName}${optionalMark} ${field.signature}\n`;
+  }
+
+  out += "\n";
+  return out;
+}
+
+function emitStructure(name: string, def: LuaStructure): string {
+  let out = "";
+
+  if (def.kind === "class") {
+    if (def.description) out += `--- ${def.description}\n`;
+    out += `---@class ${name}\n`;
+    for (const field of def.fields) {
+      const key = typeof field.key === "number" ? `[${field.key}]` : field.key;
+      const optional = field.optional ? "?" : "";
+      out += `--- ${field.description.replace(/\n/g, "\n--- ")}\n`;
+      out += `---@field ${key}${optional} ${field.type}\n`;
+    }
+  } else {
+    if (def.description) out += `--- ${def.description}\n`;
+    if (def.type) {
+      out += `---@alias ${name} ${def.type}\n`;
+    } else if (def.union) {
+      out += `---@alias ${name}\n`;
+      for (const member of def.union) {
+        out += `---| ${member}\n`;
+      }
+    }
+  }
+
+  return out + "\n";
+}
+
+export function generateScriptStubs(version: string, outDir: string) {
+  let body = "";
+
+  body += emitSharedTypes();
+
+  for (const [name, def] of Object.entries(scriptStructures)) {
+    body += emitStructure(name, def);
+  }
+
+  for (const typeName of Object.keys(scriptTypes)) {
+    body += emitScriptType(typeName, version);
+  }
+
+  const content = `---@meta edgetx\n--- EdgeTX script type definitions for version ${version}\n\n${body}`;
+
+  const fileName = "edgetx.scripts.d.lua";
+  const outPath = path.join(outDir, fileName);
+  fs.writeFileSync(outPath, content, "utf-8");
+
+  return { fileName, content };
+}

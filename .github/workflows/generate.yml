@@ -32,6 +32,7 @@ jobs:
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   TRIGGER: ${{ github.event_name }}
+                  NODE_ENV: production
 
             - name: Commit if changed
               run: |

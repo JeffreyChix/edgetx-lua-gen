@@ -87,8 +87,10 @@ export async function fetchAllSources(version: string): Promise<AllSources> {
 
   const results: AllSources = new Map();
 
+  const isDev = process.env.NODE_ENV === "development";
   const trigger = process.env.TRIGGER;
-  const forceRegenerate = trigger === "push" || trigger === "workflow_dispatch";
+  const forceRegenerate =
+    isDev || trigger === "push" || trigger === "workflow_dispatch";
 
   if (!forceRegenerate && !hasSourceChanged(sourceFiles, version)) {
     return results;

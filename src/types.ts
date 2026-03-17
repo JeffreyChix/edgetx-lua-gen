@@ -118,3 +118,56 @@ export type ScreenTypeSegment = {
   body: string[];
   elseBody?: string[];
 };
+
+// --- --- -- --- ---
+
+export interface SharedTypeField {
+  type: string;
+  description: string;
+  optional: boolean;
+}
+
+export interface SharedTypeDefinition {
+  description: string;
+  fields: Record<string, SharedTypeField>;
+}
+
+export interface ScriptField {
+  optional: boolean;
+  signature: string;
+  description: string;
+}
+
+export interface ScriptVersion {
+  from: string;
+  to: string | null; // null means latest
+  fields: Record<string, ScriptField>;
+}
+
+export interface ScriptTypeDefinition {
+  description: string;
+  notices: string[];
+  versions: ScriptVersion[];
+}
+
+export interface LuaClassField {
+  key: string | number;
+  type: string;
+  description: string;
+  optional?: boolean;
+}
+
+export interface LuaClassDef {
+  kind: "class";
+  description?: string;
+  fields: LuaClassField[];
+}
+
+export interface LuaAliasDef {
+  kind: "alias";
+  description?: string;
+  type?: string; // simple alias e.g. table<string, WidgetOption>
+  union?: string[]; // union alias
+}
+
+export type LuaStructure = LuaClassDef | LuaAliasDef;

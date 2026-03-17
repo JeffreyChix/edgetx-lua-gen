@@ -10,14 +10,14 @@
 
 ## What it does
 
-- Fetches all `api_` source files (`api_general.cpp`, `api_colorlcd.cpp`, `api_model.cpp`, `api_filesystem.cpp` etc.) directly from the EdgeTX GitHub repo — no local files needed
+- Fetches all `api_` source files (`api_general.cpp`, `api_colorlcd.cpp`, `api_model.cpp`, `api_filesystem.cpp` etc.) directly from the EdgeTX GitHub repo (`/repos/EdgeTX/edgetx/contents/radio/src/lua?ref=${version}`) — no local files needed
 - Extracts every `/*luadoc ... */` comment block — the same source as the official EdgeTX documentation
 - Scans C++ Lua registration tables for constants not covered by luadoc blocks
 - Infers types (`number`, `string`, `boolean`, `table`, `nil` etc.) for every parameter and return value
 - Extracts flag hints (e.g. `BOLD`, `BLINK`, `PLAY_NOW`) from parameter descriptions
 - Tracks `availableOn` per function and constant: `GENERAL`, `COLOR_LCD`, or `NON_COLOR_LCD`
 - Generates `.d.lua` stub files for the Lua Language Server (LuaLS) with full annotation support
-- Publishes versioned stubs and a manifest to this repo — ready to be consumed by the [EdgeTX Lua VS Code extension]()
+- Publishes versioned stubs and a manifest to this repo — ready to be consumed by the EdgeTX Dev Kit VS Code extension (coming soon)
 
 ---
 
@@ -35,6 +35,7 @@ GitHub Actions (scheduled + push triggered)
         ├─ Compare against manifest — skip if nothing changed
         ├─ Parse changed sources → generate edgetx-lua-api.json
         ├─ Generate .d.lua stubs per module
+        ├─ Generate script type stubs (eg: telemetry script)
         ├─ Hash all output files
         └─ Commit stubs + manifest back to this repo
 ```
@@ -169,6 +170,7 @@ The generator maintains a `manifest.json` at the root of this repo. The VS Code 
         "edgetx-lua-api.json",
         "edgetx.globals.d.lua",
         "edgetx.constants.d.lua",
+        "edgetx.scripts.d.lua",
         "lcd.d.lua",
         "model.d.lua"
       ]
@@ -198,8 +200,10 @@ The generator maintains a `manifest.json` at the root of this repo. The VS Code 
 │   │   ├── edgetx-lua-api.json
 │   │   ├── edgetx.globals.d.lua
 │   │   ├── edgetx.constants.d.lua
-│   │   ├── lcd.d.lua
-│   │   └── model.d.lua
+│   │   ├── edgetx.scripts.d.lua
+│   │   ├── edgetx.bitmap.d.lua
+│   │   ├── edgetx.lcd.d.lua
+│   │   └── edgetx.model.d.lua
 │   └── 2.9/
 │       └── ...
 └── src/
@@ -208,7 +212,9 @@ The generator maintains a `manifest.json` at the root of this repo. The VS Code 
     ├── parser.ts         ← luadoc block extraction + C++ registration table scan
     ├── typeInferrer.ts   ← Infers LuaValueType from param names and descriptions
     ├── flagLinker.ts     ← Extracts ALL_CAPS flag references from param descriptions
+    ├── scriptTypes.ts    ← Handcrafted types for edgetx script types
     ├── stubgen.ts        ← Generates .d.lua stub files from the API JSON
+    ├── scriptsgen.ts     ← Called from `stubgen.ts`. Generates .d.lua stub files from `scriptTypes.ts`
     ├── helpers.ts        ← Helper functions
     ├── regex.ts          ← Major regular expressions
     └── types.ts          ← All TypeScript interfaces
@@ -226,6 +232,7 @@ Create a `.env` file for local runs:
 
 ```
 GITHUB_TOKEN=github_pat_xxxxxx
+NODE_ENV=development
 ```
 
 > A [fine-grained GitHub personal access token](https://github.com/settings/personal-access-tokens/new) is recommended. Set **Contents: Read and Write** on this repo only. The token raises your GitHub API rate limit from 60 to 5,000 requests/hour — necessary when fetching branch lists and source file SHAs across multiple EdgeTX versions.
@@ -276,9 +283,10 @@ stubs/2.10/
 ├── edgetx-lua-api.json       ← full merged API, all sources
 ├── edgetx.globals.d.lua      ← global functions (no module prefix)
 ├── edgetx.constants.d.lua    ← all constants grouped by module
-├── lcd.d.lua                 ← lcd.* namespace
-├── model.d.lua               ← model.* namespace
-├── Bitmap.d.lua              ← Bitmap.* namespace
+├── edgetx.scripts.d.lua      ← script types
+├── edgetx.lcd.d.lua          ← lcd.* namespace
+├── edgetx.model.d.lua        ← model.* namespace
+├── edgetx.bitmap.d.lua       ← Bitmap.* namespace
 └── ...                       ← any future modules are handled automatically
 ```
 

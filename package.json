@@ -1,15 +1,17 @@
 {
-  "name": "edgetx-lua-extractor",
+  "name": "edgetx-lua-gen",
   "version": "1.0.0",
-  "description": "Extracts EdgeTX Lua API documentation from C++ source files into structured JSON",
+  "description": "GitHub Actions pipeline that parses EdgeTX C++ source files and generates LuaLS definition stubs and API JSON for the EdgeTX Dev Kit VS Code extension.",
   "main": "dist/index.js",
+  "author": "Jeffrey Nwankwo",
   "scripts": {
-    "start": "npx tsx src/index.ts",
-    "build": "npx tsc",
-    "dev": "npx tsx src/index.ts"
+    "start": "npx tsx src/index.ts --version main --withstubs",
+    "build": "npx tsc"
   },
   "keywords": [
     "edgetx",
+    "github-actions",
+    "stubs",
     "lua",
     "api",
     "extractor"
