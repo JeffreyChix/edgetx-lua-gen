@@ -1,6 +1,6 @@
 {
   "version": "main",
-  "generated": "2026-03-17T00:30:50.450Z",
+  "generated": "2026-03-17T01:30:18.353Z",
   "functions": [
     {
       "entityType": "function",
@@ -7244,6 +7244,14 @@
       "description": "",
       "sourceFile": "api_general.cpp",
       "name": "STDSIZE",
+      "module": "general"
+    },
+    {
+      "entityType": "constant",
+      "availableOn": "COLOR_LCD",
+      "description": "",
+      "sourceFile": "api_general.cpp",
+      "name": "XLSIZE",
       "module": "general"
     },
     {

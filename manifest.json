@@ -1,9 +1,9 @@
 {
   "manifestVersion": 1,
-  "updatedAt": "2026-03-17T00:30:50.458Z",
+  "updatedAt": "2026-03-17T01:30:18.360Z",
   "versions": {
     "2.3": {
-      "generatedAt": "2026-03-17T00:30:50.458Z",
+      "generatedAt": "2026-03-17T01:30:18.360Z",
       "stubHash": "5c7bfcfc1b86b008f33f997e44c658c7050cb7691c6a1cd16acaf24eb4cd078d",
       "files": [
         "edgetx.globals.d.lua",
@@ -20,7 +20,7 @@
       }
     },
     "2.4": {
-      "generatedAt": "2026-03-17T00:30:50.458Z",
+      "generatedAt": "2026-03-17T01:30:18.360Z",
       "stubHash": "b3c07e9016b7bc1df6fcba21f78a46ba7a16a03963d10d1f0be456afe27174a5",
       "files": [
         "edgetx.globals.d.lua",
@@ -39,7 +39,7 @@
       }
     },
     "2.5": {
-      "generatedAt": "2026-03-17T00:30:50.458Z",
+      "generatedAt": "2026-03-17T01:30:18.360Z",
       "stubHash": "6ff3acc028a60d87eb4becd1d46a8f8c0f7dd9d8d33237369c490af201c460a1",
       "files": [
         "edgetx.globals.d.lua",
@@ -59,7 +59,7 @@
       }
     },
     "2.6": {
-      "generatedAt": "2026-03-17T00:30:50.458Z",
+      "generatedAt": "2026-03-17T01:30:18.360Z",
       "stubHash": "135cd856e6ab2dbb42a0f7dc93f8728204af2327f6d395807ad0b39e35bea274",
       "files": [
         "edgetx.globals.d.lua",
@@ -79,7 +79,7 @@
       }
     },
     "2.7": {
-      "generatedAt": "2026-03-17T00:30:50.458Z",
+      "generatedAt": "2026-03-17T01:30:18.360Z",
       "stubHash": "058b1f5685ffaf811abf00468d081caede8620ef70f16dd901b6cbead6565e57",
       "files": [
         "edgetx.globals.d.lua",
@@ -99,7 +99,7 @@
       }
     },
     "2.8": {
-      "generatedAt": "2026-03-17T00:30:50.458Z",
+      "generatedAt": "2026-03-17T01:30:18.360Z",
       "stubHash": "849ff3c95ea8a340b3bf473011321c675eb4d4d3332953ed063d0a9ea649f897",
       "files": [
         "edgetx.globals.d.lua",
@@ -119,7 +119,7 @@
       }
     },
     "2.9": {
-      "generatedAt": "2026-03-17T00:30:50.458Z",
+      "generatedAt": "2026-03-17T01:30:18.360Z",
       "stubHash": "d989a58dbf57f3c85ba5c9d498c0930d33ab117fd76f479d9fa9e963baf6b777",
       "files": [
         "edgetx.globals.d.lua",
@@ -138,7 +138,7 @@
       }
     },
     "2.10": {
-      "generatedAt": "2026-03-17T00:30:50.458Z",
+      "generatedAt": "2026-03-17T01:30:18.360Z",
       "stubHash": "aa2ef9ffd1c03d443ea2cdd05153dfaf0b03ff8de47643fca3fa8c0ddc980748",
       "files": [
         "edgetx.globals.d.lua",
@@ -157,7 +157,7 @@
       }
     },
     "2.11": {
-      "generatedAt": "2026-03-17T00:30:50.458Z",
+      "generatedAt": "2026-03-17T01:30:18.360Z",
       "stubHash": "873153beb5acc24965be6454d4728bb9b1ff314a11858c8a79e206d41ded7644",
       "files": [
         "edgetx.globals.d.lua",
@@ -177,7 +177,7 @@
       }
     },
     "2.12": {
-      "generatedAt": "2026-03-17T00:30:50.458Z",
+      "generatedAt": "2026-03-17T01:30:18.360Z",
       "stubHash": "e56828db4530e7b6f083065750157bd46df7978454e6ac78655faa8fc4070ce6",
       "files": [
         "edgetx.globals.d.lua",
@@ -197,8 +197,8 @@
       }
     },
     "main": {
-      "generatedAt": "2026-03-17T00:30:50.458Z",
-      "stubHash": "49c96379e31df8d997212046db235602890c665e4d901d356ebd92b95f29209d",
+      "generatedAt": "2026-03-17T01:30:18.360Z",
+      "stubHash": "e7ce8e9909eca78b87e4e1fb86ca4e5561a2680dc93c4ce374cfeaa220d86a4f",
       "files": [
         "edgetx.globals.d.lua",
         "edgetx.lcd.d.lua",
@@ -211,7 +211,7 @@
         "radio/src/lua/api_colorlcd.cpp": "fda476ff4e5bd1cccc2cc55b30176086c6fd2be2",
         "radio/src/lua/api_colorlcd_lvgl.cpp": "fe26f5ff65c238de2e6da3e13e0fc115cff8a2a0",
         "radio/src/lua/api_filesystem.cpp": "33c85c727750d40020dbc834ace0ba508b0d004a",
-        "radio/src/lua/api_general.cpp": "25d608dfa857b15baf0916ea6a6ae4f9f4def59c",
+        "radio/src/lua/api_general.cpp": "43dfe0ee5ea569d69d2fff3e4f42a04d42e67492",
         "radio/src/lua/api_model.cpp": "8dd674c0e18423ae1a2439e8f6e61fc3929790f5",
         "radio/src/lua/api_stdlcd.cpp": "7b3d200082589537d5235ff89c79175cf2916d16"
       }
