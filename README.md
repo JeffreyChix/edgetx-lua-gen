@@ -1,35 +1,55 @@
-# EdgeTX Lua API Extractor
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Parses EdgeTX C++ source files and extracts the full Lua API into a structured
-JSON file — suitable for use in IDE extensions, autocomplete engines, stub
-generators, and developer toolkits.
+# EdgeTX Lua API Generator
+
+> **Automatically extracts the full EdgeTX Lua API from C++ source, generates structured JSON and LuaLS-compatible `.d.lua` stubs — and keeps them in sync with upstream EdgeTX releases.**
+
+![IntelliSense demo](assets/intellisense-demo.png)
 
 ---
 
 ## What it does
 
-- Fetches all the `api_` files such as `api_general.cpp`, `api_filesystem.cpp`, `api_colorlcd.cpp`, and `api_model.cpp` from the EdgeTX GitHub repo 
-- Extracts every `/*luadoc ... */` comment block — the same source as the
-  official EdgeTX documentation
+- Fetches all `api_` source files (`api_general.cpp`, `api_colorlcd.cpp`, `api_model.cpp`, `api_filesystem.cpp` etc.) directly from the EdgeTX GitHub repo — no local files needed
+- Extracts every `/*luadoc ... */` comment block — the same source as the official EdgeTX documentation
 - Scans C++ Lua registration tables for constants not covered by luadoc blocks
-- Infers types (`number`, `string`, `boolean`, `table`, `nil`, etc.) for every
-  parameter and return value
+- Infers types (`number`, `string`, `boolean`, `table`, `nil` etc.) for every parameter and return value
 - Extracts flag hints (e.g. `BOLD`, `BLINK`, `PLAY_NOW`) from parameter descriptions
-- Tracks `availableOn` per function and constant: `GENERAL`, `COLOR_LCD`, or
-  `NON_COLOR_LCD`
-- Optionally generates `.d.lua` stub files for the Lua Language Server (LuaLS)
-  in the same run
+- Tracks `availableOn` per function and constant: `GENERAL`, `COLOR_LCD`, or `NON_COLOR_LCD`
+- Generates `.d.lua` stub files for the Lua Language Server (LuaLS) with full annotation support
+- Publishes versioned stubs and a manifest to this repo — ready to be consumed by the [EdgeTX Lua VS Code extension]()
+
+---
+
+## How it stays up to date
+
+This repo runs a GitHub Actions pipeline on a schedule (Monday and Thursday) and on every push to `main`. It checks for changes in EdgeTX source files before regenerating — so no redundant work is done.
+
+```
+EdgeTX repo (upstream)
+        │
+        ▼
+GitHub Actions (scheduled + push triggered)
+        │
+        ├─ Fetch source file SHAs from EdgeTX repo
+        ├─ Compare against manifest — skip if nothing changed
+        ├─ Parse changed sources → generate edgetx-lua-api.json
+        ├─ Generate .d.lua stubs per module
+        ├─ Hash all output files
+        └─ Commit stubs + manifest back to this repo
+```
+
+The VS Code extension fetches `manifest.json` silently on activation and downloads only what has changed.
 
 ---
 
 ## Output shape
 
-Each run produces a versioned JSON file with two top-level arrays: `functions`
-and `constants`.
+Each run produces a versioned `edgetx-lua-api.json` with two top-level arrays: `functions` and `constants`, plus a set of `.d.lua` stub files per EdgeTX version.
 
 ```json
 {
-  "version": "main",
+  "version": "2.10",
   "generated": "2026-03-14T11:16:11.396Z",
   "functions": [
     {
@@ -86,9 +106,7 @@ and `constants`.
 }
 ```
 
-### Field reference
-
-#### Function fields
+### Function fields
 
 | Field                | Type                                          | Description                                                                  |
 | -------------------- | --------------------------------------------- | ---------------------------------------------------------------------------- |
@@ -97,7 +115,7 @@ and `constants`.
 | `name`               | `string`                                      | Function name                                                                |
 | `signature`          | `string`                                      | Full human-readable signature from luadoc                                    |
 | `description`        | `string`                                      | Doc comment body                                                             |
-| `parameters`         | `LuaParam[]`                                  | Ordered list of parameters (see below)                                       |
+| `parameters`         | `LuaParam[]`                                  | Ordered list of parameters                                                   |
 | `overloadParameters` | `LuaParam[]`                                  | Alternate parameter list for overloaded signatures (e.g. `rgb` vs `r, g, b`) |
 | `returns`            | `LuaReturn[]`                                 | Return values — empty array means void                                       |
 | `notices`            | `string[]`                                    | Warning or notice blocks from luadoc                                         |
@@ -107,17 +125,17 @@ and `constants`.
 | `sourceFile`         | `string`                                      | Origin C++ file                                                              |
 | `availableOn`        | `"GENERAL" \| "COLOR_LCD" \| "NON_COLOR_LCD"` | Screen type availability                                                     |
 
-#### Parameter fields (`LuaParam`)
+### Parameter fields (`LuaParam`)
 
 | Field         | Type       | Description                                                                                                         |
 | ------------- | ---------- | ------------------------------------------------------------------------------------------------------------------- |
 | `name`        | `string`   | Parameter name                                                                                                      |
-| `type`        | `string`   | Inferred type: `number`, `string`, `boolean`, `table`, `nil`, etc.                                                  |
+| `type`        | `string`   | Inferred type: `number`, `string`, `boolean`, `table`, `nil` etc.                                                   |
 | `description` | `string`   | Inline doc description                                                                                              |
 | `optional`    | `boolean`  | Whether the parameter is optional                                                                                   |
 | `flagHints`   | `string[]` | ALL_CAPS flag/constant references parsed from the description. Non-exhaustive — treat as hints, not a complete list |
 
-#### Constant fields
+### Constant fields
 
 | Field         | Type                                          | Description                |
 | ------------- | --------------------------------------------- | -------------------------- |
@@ -130,11 +148,87 @@ and `constants`.
 
 ---
 
+## Manifest
+
+The generator maintains a `manifest.json` at the root of this repo. The VS Code extension uses it to silently detect when stubs need updating — without re-downloading everything every time.
+
+```json
+{
+  "manifestVersion": 1,
+  "updatedAt": "2026-03-16T06:00:00Z",
+  "versions": {
+    "2.10": {
+      "generatedAt": "2026-03-16T06:00:00Z",
+      "stubHash": "f7e6d5c4a3b2e1d0...",
+      "sources": {
+        "radio/src/lua/api_colorlcd.cpp": "fda476ff4e5bd1cccc2cc55b30176086c6fd2be2",
+        "radio/src/lua/api_general.cpp": "a1b2c3d4e5f6g7h8...",
+        "radio/src/lua/api_misc.cpp": "e5f6g7h8i9j0k1l2..."
+      },
+      "files": [
+        "edgetx-lua-api.json",
+        "edgetx.globals.d.lua",
+        "edgetx.constants.d.lua",
+        "lcd.d.lua",
+        "model.d.lua"
+      ]
+    }
+  }
+}
+```
+
+| Field             | Description                                                                                    |
+| ----------------- | ---------------------------------------------------------------------------------------------- |
+| `manifestVersion` | Schema version of the manifest itself. Only bumped on breaking structural changes              |
+| `updatedAt`       | Timestamp of the last generation run that produced any change                                  |
+| `generatedAt`     | When this specific version's stubs were last generated                                         |
+| `stubHash`        | SHA-256 of all stub files combined. Extension compares this to detect if re-download is needed |
+| `sources`         | Map of each parsed C++ source file path to its git blob SHA. Used to detect upstream changes   |
+| `files`           | Exact list of files available for this version under `stubs/<version>/`                        |
+
+---
+
+## Repo structure
+
+```
+/
+├── manifest.json               ← consumed by the VS Code extension
+├── stubs/
+│   ├── 2.10/
+│   │   ├── edgetx-lua-api.json
+│   │   ├── edgetx.globals.d.lua
+│   │   ├── edgetx.constants.d.lua
+│   │   ├── lcd.d.lua
+│   │   └── model.d.lua
+│   └── 2.9/
+│       └── ...
+└── src/
+    ├── index.ts          ← Entry point — CLI, orchestration, JSON output
+    ├── fetcher.ts        ← Downloads C++ source files from the EdgeTX GitHub repo
+    ├── parser.ts         ← luadoc block extraction + C++ registration table scan
+    ├── typeInferrer.ts   ← Infers LuaValueType from param names and descriptions
+    ├── flagLinker.ts     ← Extracts ALL_CAPS flag references from param descriptions
+    ├── stubgen.ts        ← Generates .d.lua stub files from the API JSON
+    ├── helpers.ts        ← Helper functions
+    ├── regex.ts          ← Major regular expressions
+    └── types.ts          ← All TypeScript interfaces
+```
+
+---
+
 ## Setup
 
 ```bash
 npm install
 ```
+
+Create a `.env` file for local runs:
+
+```
+GITHUB_TOKEN=github_pat_xxxxxx
+```
+
+> A [fine-grained GitHub personal access token](https://github.com/settings/personal-access-tokens/new) is recommended. Set **Contents: Read and Write** on this repo only. The token raises your GitHub API rate limit from 60 to 5,000 requests/hour — necessary when fetching branch lists and source file SHAs across multiple EdgeTX versions.
 
 ---
 
@@ -143,91 +237,70 @@ npm install
 ### Basic
 
 ```bash
-# Fetch latest from GitHub (main branch) and write to output/
+# Fetch latest from GitHub (main branch) and write to stubs/
 npm start
 
 # Equivalent explicit form
-npx tsx src/index.ts
+npx tsx src/index.ts --version main --withstubs
 ```
 
 ### Options
 
 ```bash
-# Fetch a specific EdgeTX version
-npx tsx src/index.ts --version 2.4
+# Fetch a specific EdgeTX version branch
+npx tsx src/index.ts --version 2.10 --withstubs
 
-# Fetch ALL tagged versions (produces one JSON file per version under output/)
-npx tsx src/index.ts --version ALL
+# Fetch ALL numeric version branches from the EdgeTX repo
+npx tsx src/index.ts --version all --withstubs
 
-# Custom output directory (default: output/)
-npx tsx src/index.ts --outDir ./my-output
-
-# Also generate .d.lua stubs for the Lua Language Server after JSON extraction
-npx tsx src/index.ts --withStubs
-
-# Combine options
-npx tsx src/index.ts --version 2.10 --outDir ./releases/2.10 --withStubs
+# Custom output directory (default: stubs/)
+npx tsx src/index.ts --version 2.10 --outDir ./releases/2.10 --withstubs
 ```
 
 ### CLI flags
 
-| Flag              | Default  | Description                                                               |
-| ----------------- | -------- | ------------------------------------------------------------------------- |
-| `--version <ver>` | `main`   | EdgeTX version to fetch. Use `ALL` or `all` to fetch every tagged release |
-| `--outDir <path>` | `output` | Directory to write JSON (and stubs if `--withStubs`)                      |
-| `--withStubs`     | off      | Generate `.d.lua` stubs immediately after JSON extraction                 |
+| Flag              | Default | Description                                                             |
+| ----------------- | ------- | ----------------------------------------------------------------------- |
+| `--version <ver>` | `main`  | EdgeTX version branch to fetch. Use `all` to fetch every numeric branch |
+| `--outDir <path>` | `stubs` | Directory to write JSON and stubs                                       |
+| `--withstubs`     | off     | Generate `.d.lua` stubs alongside the JSON                              |
 
 ---
 
 ## Stub generation
 
-Stubs can be generated in two ways:
-
-### 1. As part of extraction (`--withStubs`)
-
-```bash
-npx tsx src/index.ts --withStubs
-```
-
-Stubs are written alongside the JSON under `--outDir`.
-
-### 2. Standalone from an existing JSON
-
-```bash
-npx tsx src/stubgen.ts --input output/main/edgetx-lua-api.json --outDir ./stubs
-```
-
-| Flag              | Default                           | Description                            |
-| ----------------- | --------------------------------- | -------------------------------------- |
-| `--input <path>`  | `output/main/edgetx-lua-api.json` | Path to an existing API JSON file      |
-| `--outDir <path>` | `stubs`                           | Directory to write `.d.lua` stub files |
-
-The stub generator produces one file per module:
+Stubs are generated as part of extraction via `--withstubs`. The generator produces one `.d.lua` file per Lua module, derived from the module prefix in each function's name (e.g. `lcd.drawText` → `lcd.d.lua`). Functions with no module prefix land in `edgetx.globals.d.lua`.
 
 ```
-stubs/
-├── edgetx.globals.lua    # Global functions (module == "general")
-├── edgetx.lcd.lua        # lcd.* namespace
-├── edgetx.model.lua      # model.* namespace
-├── edgetx.Bitmap.lua     # Bitmap.* namespace
-└── edgetx.constants.lua  # All constants
+stubs/2.10/
+├── edgetx-lua-api.json       ← full merged API, all sources
+├── edgetx.globals.d.lua      ← global functions (no module prefix)
+├── edgetx.constants.d.lua    ← all constants grouped by module
+├── lcd.d.lua                 ← lcd.* namespace
+├── model.d.lua               ← model.* namespace
+├── Bitmap.d.lua              ← Bitmap.* namespace
+└── ...                       ← any future modules are handled automatically
 ```
 
-Each file uses LuaLS [LuaCATS annotations](https://luals.github.io/wiki/annotations/)
-(`---@param`, `---@return`, `---@overload`, `---@class`, `---@deprecated`, etc.)
-for full IntelliSense support.
+Each file uses [LuaCATS annotations](https://luals.github.io/wiki/annotations/) (`---@param`, `---@return`, `---@overload`, `---@class`, `---@deprecated` etc.) for full IntelliSense support in the Lua Language Server.
+
+![Stub preview](assets/stub-preview.png)
+---
+
+## CI / GitHub Actions
+
+The pipeline runs automatically. No manual intervention is needed for routine updates.
+
+| Trigger             | Behaviour                                                           |
+| ------------------- | ------------------------------------------------------------------- |
+| `push` to `main`    | Always regenerates — your generator code may have changed           |
+| `schedule`          | Regenerates only if any EdgeTX source file SHA has changed upstream |
+| `workflow_dispatch` | Always regenerates — useful for manually forcing a fresh run        |
+
+The source SHA check means the scheduled run is a no-op most of the time — it only does real work when EdgeTX actually changes a Lua API file.
 
 ---
 
-## Project structure
+## Contributing
 
-```
-src/
-├── index.ts          # Entry point — CLI, orchestration, JSON output
-├── fetcher.ts        # Downloads C++ source files from GitHub
-├── parser.ts         # luadoc block extraction + C++ registration table scan
-├── typeInferrer.ts   # Infers LuaValueType from param names and descriptions
-├── flagLinker.ts     # Extracts ALL_CAPS flag references from param descriptions
-├── stubgen.ts        # Generates .d.lua stub files from the API JSON
-└── types.ts          # All TypeScript interfaces
-```
+The generator is intentionally structured so new EdgeTX modules require no code changes — any function with an unrecognised module prefix automatically gets its own stub file. If you find a parsing gap or a type inference miss, the relevant files are `parser.ts` and `typeInferrer.ts`.

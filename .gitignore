@@ -10,6 +10,7 @@ dist/
 # Personal
 todo.txt
 test.lua
+.vscode
 
 # Environment
 .env
