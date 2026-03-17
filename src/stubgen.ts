@@ -1,25 +1,3 @@
-/**
- * stubgen.ts
- *
- * Reads the EdgeTX Lua API JSON (produced by index.ts) and emits a set of
- * lua-language-server (LuaLS / sumneko) annotation files (.lua) that give
- * VS Code full IntelliSense: hover docs, parameter hints, return types, and
- * constant completion.
- *
- * Annotation spec: https://luals.github.io/wiki/annotations/
- *
- * Output layout (all under --outDir, default ./stubs/):
- *
- *   edgetx.globals.lua    – global functions  (module == "general")
- *   edgetx.lcd.lua        – lcd.* namespace
- *   edgetx.model.lua      – model.* namespace
- *   edgetx.Bitmap.lua     – Bitmap.* namespace
- *   edgetx.constants.lua  – all constants as typed globals
- *
- * Usage:
- *   npx tsx src/stubgen.ts [--input edgetx-lua-api.json] [--outDir ./stubs]
- */
-
 import * as fs from "fs";
 import * as path from "path";
 import { createHash } from "crypto";

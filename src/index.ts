@@ -1,10 +1,6 @@
-// EdgeTX Lua API Extractor
-// Fetches EdgeTX C++ source files, parses /*luadoc */ blocks and C++ registration
-// tables, and writes a single structured JSON file for use in IDE tooling.
 import "dotenv/config";
 import * as fs from "fs";
 import * as path from "path";
-import util from "util";
 import {
   fetchAllSources,
   fetchAllEdgeTxVersions,
@@ -17,7 +13,6 @@ import {
   LuaConstant,
   Availability,
   ScreenTypeSegment,
-  GitHubContentItems,
   StubManifest,
 } from "./types";
 import {
@@ -30,7 +25,7 @@ import { generateStubs } from "./stubgen";
 
 async function parseArgs() {
   const args = process.argv.slice(2);
-  let outDir = "output";
+  let outDir = "stubs";
   let versions: string[] = [];
   let withStubs = false;
 
@@ -210,10 +205,7 @@ async function main() {
     console.log(`   Output    : ${path.resolve(outFile)}`);
 
     if (withStubs) {
-      const { files, stubHash } = generateStubs(
-        apiDoc,
-        path.join(outDir, "stubs"),
-      );
+      const { files, stubHash } = generateStubs(apiDoc, outDir);
 
       stubManifest[version].stubHash = stubHash;
       stubManifest[version].files = [...files, "edgetx-lua-api.json"];
@@ -221,8 +213,6 @@ async function main() {
   }
 
   writeManifest(stubManifest);
-
-  console.log(util.inspect(stubManifest, true));
 
   console.log("\n✅ Done");
   console.log(`   Versions generated : ${versions.length}`);

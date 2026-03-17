@@ -3,8 +3,6 @@ node_modules/
 
 # Build output
 dist/
-output/
-stubs/
 *.js
 *.d.ts
 *.js.map
@@ -16,10 +14,6 @@ test.lua
 # Environment
 .env
 .env.*
-
-# OS
-.DS_Store
-Thumbs.db
 
 # Logs
 *.log

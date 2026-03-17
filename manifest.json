@@ -1,32 +1,33 @@
 {
   "manifestVersion": 1,
-  "updatedAt": "2026-03-16T23:49:34.579Z",
+  "updatedAt": "2026-03-17T00:23:53.141Z",
   "versions": {
     "2.3": {
-      "generatedAt": "2026-03-16T23:49:34.579Z",
-      "stubHash": "5c7bfcfc1b86b008f33f997e44c658c7050cb7691c6a1cd16acaf24eb4cd078d",
+      "generatedAt": "2026-03-17T00:23:53.141Z",
+      "stubHash": "5c9e1a2f3fd9464e911e3ad85bd3f6a111b648715f966c55a60e6c3f33e64af1",
       "files": [
         "edgetx.globals.d.lua",
         "edgetx.lcd.d.lua",
         "edgetx.model.d.lua",
         "edgetx.bitmap.d.lua",
-        "edgetx.constants.d.lua"
+        "edgetx.constants.d.lua",
+        "edgetx-lua-api.json"
       ],
       "sources": {
         "radio/src/lua/api_general.cpp": "5d0d9f8b2fc7f7952a04d3abccb64d7a61cf9d1c",
-        "radio/src/lua/api_lcd.cpp": "a4079387c7d8e3cc8a586df7d26f45eb64206188",
-        "radio/src/lua/api_model.cpp": "8bd51a059a3f5cf8e27a2f1689a9a436f185b98b"
+        "radio/src/lua/api_lcd.cpp": "a4079387c7d8e3cc8a586df7d26f45eb64206188"
       }
     },
     "2.4": {
-      "generatedAt": "2026-03-16T23:49:34.579Z",
+      "generatedAt": "2026-03-17T00:23:53.141Z",
       "stubHash": "b3c07e9016b7bc1df6fcba21f78a46ba7a16a03963d10d1f0be456afe27174a5",
       "files": [
         "edgetx.globals.d.lua",
         "edgetx.lcd.d.lua",
         "edgetx.model.d.lua",
         "edgetx.bitmap.d.lua",
-        "edgetx.constants.d.lua"
+        "edgetx.constants.d.lua",
+        "edgetx-lua-api.json"
       ],
       "sources": {
         "radio/src/lua/api_colorlcd.cpp": "cff1374813e7d14a107cce618a33e8d7d37866a1",
@@ -37,14 +38,15 @@
       }
     },
     "2.5": {
-      "generatedAt": "2026-03-16T23:49:34.579Z",
+      "generatedAt": "2026-03-17T00:23:53.141Z",
       "stubHash": "6ff3acc028a60d87eb4becd1d46a8f8c0f7dd9d8d33237369c490af201c460a1",
       "files": [
         "edgetx.globals.d.lua",
         "edgetx.lcd.d.lua",
         "edgetx.model.d.lua",
         "edgetx.bitmap.d.lua",
-        "edgetx.constants.d.lua"
+        "edgetx.constants.d.lua",
+        "edgetx-lua-api.json"
       ],
       "sources": {
         "radio/src/lua/api_colorlcd.cpp": "eecfb8eeaa9493bfe7951ff4433ca267a45ae662",
@@ -56,14 +58,15 @@
       }
     },
     "2.6": {
-      "generatedAt": "2026-03-16T23:49:34.579Z",
+      "generatedAt": "2026-03-17T00:23:53.141Z",
       "stubHash": "135cd856e6ab2dbb42a0f7dc93f8728204af2327f6d395807ad0b39e35bea274",
       "files": [
         "edgetx.globals.d.lua",
         "edgetx.lcd.d.lua",
         "edgetx.model.d.lua",
         "edgetx.bitmap.d.lua",
-        "edgetx.constants.d.lua"
+        "edgetx.constants.d.lua",
+        "edgetx-lua-api.json"
       ],
       "sources": {
         "radio/src/lua/api_colorlcd.cpp": "66fc3e271160ef5b96817bef4eb0631569e4880b",
@@ -75,14 +78,15 @@
       }
     },
     "2.7": {
-      "generatedAt": "2026-03-16T23:49:34.579Z",
+      "generatedAt": "2026-03-17T00:23:53.141Z",
       "stubHash": "058b1f5685ffaf811abf00468d081caede8620ef70f16dd901b6cbead6565e57",
       "files": [
         "edgetx.globals.d.lua",
         "edgetx.lcd.d.lua",
         "edgetx.model.d.lua",
         "edgetx.bitmap.d.lua",
-        "edgetx.constants.d.lua"
+        "edgetx.constants.d.lua",
+        "edgetx-lua-api.json"
       ],
       "sources": {
         "radio/src/lua/api_colorlcd.cpp": "66fc3e271160ef5b96817bef4eb0631569e4880b",
@@ -94,14 +98,15 @@
       }
     },
     "2.8": {
-      "generatedAt": "2026-03-16T23:49:34.579Z",
+      "generatedAt": "2026-03-17T00:23:53.141Z",
       "stubHash": "849ff3c95ea8a340b3bf473011321c675eb4d4d3332953ed063d0a9ea649f897",
       "files": [
         "edgetx.globals.d.lua",
         "edgetx.lcd.d.lua",
         "edgetx.model.d.lua",
         "edgetx.bitmap.d.lua",
-        "edgetx.constants.d.lua"
+        "edgetx.constants.d.lua",
+        "edgetx-lua-api.json"
       ],
       "sources": {
         "radio/src/lua/api_colorlcd.cpp": "b853008a55636fdc0b85ccb13c5dff0171ac4a08",
@@ -113,14 +118,15 @@
       }
     },
     "2.9": {
-      "generatedAt": "2026-03-16T23:49:34.579Z",
+      "generatedAt": "2026-03-17T00:23:53.141Z",
       "stubHash": "d989a58dbf57f3c85ba5c9d498c0930d33ab117fd76f479d9fa9e963baf6b777",
       "files": [
         "edgetx.globals.d.lua",
         "edgetx.lcd.d.lua",
         "edgetx.model.d.lua",
         "edgetx.bitmap.d.lua",
-        "edgetx.constants.d.lua"
+        "edgetx.constants.d.lua",
+        "edgetx-lua-api.json"
       ],
       "sources": {
         "radio/src/lua/api_colorlcd.cpp": "b201891133130c277729a6accc4b07b16c036062",
@@ -131,14 +137,15 @@
       }
     },
     "2.10": {
-      "generatedAt": "2026-03-16T23:49:34.579Z",
+      "generatedAt": "2026-03-17T00:23:53.141Z",
       "stubHash": "aa2ef9ffd1c03d443ea2cdd05153dfaf0b03ff8de47643fca3fa8c0ddc980748",
       "files": [
         "edgetx.globals.d.lua",
         "edgetx.lcd.d.lua",
         "edgetx.model.d.lua",
         "edgetx.bitmap.d.lua",
-        "edgetx.constants.d.lua"
+        "edgetx.constants.d.lua",
+        "edgetx-lua-api.json"
       ],
       "sources": {
         "radio/src/lua/api_colorlcd.cpp": "7ab9a567e19a6db5476e68319885628e27966329",
@@ -149,14 +156,15 @@
       }
     },
     "2.11": {
-      "generatedAt": "2026-03-16T23:49:34.579Z",
+      "generatedAt": "2026-03-17T00:23:53.141Z",
       "stubHash": "873153beb5acc24965be6454d4728bb9b1ff314a11858c8a79e206d41ded7644",
       "files": [
         "edgetx.globals.d.lua",
         "edgetx.lcd.d.lua",
         "edgetx.model.d.lua",
         "edgetx.bitmap.d.lua",
-        "edgetx.constants.d.lua"
+        "edgetx.constants.d.lua",
+        "edgetx-lua-api.json"
       ],
       "sources": {
         "radio/src/lua/api_colorlcd.cpp": "285de60bc623badaffc1a72b8c72d83410d8eb9e",
@@ -168,14 +176,15 @@
       }
     },
     "2.12": {
-      "generatedAt": "2026-03-16T23:49:34.579Z",
+      "generatedAt": "2026-03-17T00:23:53.141Z",
       "stubHash": "e56828db4530e7b6f083065750157bd46df7978454e6ac78655faa8fc4070ce6",
       "files": [
         "edgetx.globals.d.lua",
         "edgetx.lcd.d.lua",
         "edgetx.model.d.lua",
         "edgetx.bitmap.d.lua",
-        "edgetx.constants.d.lua"
+        "edgetx.constants.d.lua",
+        "edgetx-lua-api.json"
       ],
       "sources": {
         "radio/src/lua/api_colorlcd.cpp": "fda476ff4e5bd1cccc2cc55b30176086c6fd2be2",
@@ -187,14 +196,15 @@
       }
     },
     "main": {
-      "generatedAt": "2026-03-16T23:49:34.579Z",
+      "generatedAt": "2026-03-17T00:23:53.141Z",
       "stubHash": "49c96379e31df8d997212046db235602890c665e4d901d356ebd92b95f29209d",
       "files": [
         "edgetx.globals.d.lua",
         "edgetx.lcd.d.lua",
         "edgetx.model.d.lua",
         "edgetx.bitmap.d.lua",
-        "edgetx.constants.d.lua"
+        "edgetx.constants.d.lua",
+        "edgetx-lua-api.json"
       ],
       "sources": {
         "radio/src/lua/api_colorlcd.cpp": "fda476ff4e5bd1cccc2cc55b30176086c6fd2be2",
