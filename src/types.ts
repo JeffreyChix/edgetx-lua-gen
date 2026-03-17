@@ -1,3 +1,28 @@
+export type EdgeTXVersion = {
+  generatedAt: string;
+  stubHash: string;
+  sources: {
+    [key: string]: string;
+  };
+  files: string[];
+};
+
+export interface Manifest {
+  manifestVersion: number;
+  updatedAt: string;
+  versions: {
+    [key: string]: EdgeTXVersion;
+  };
+}
+
+interface StubEntry {
+  sources: GitHubContentItems;
+  stubHash: string;
+  files: string[];
+}
+
+export type StubManifest = Record<string, StubEntry>;
+
 export type LuaEntityType = "function" | "constant" | "variable";
 
 export type LuaValueType =
@@ -82,7 +107,8 @@ export interface GitHubContentItem {
   name: string;
   path: string;
   url: string;
-  download_url: string | null;
+  sha: string;
+  download_url: string;
 }
 
 export type GitHubContentItems = GitHubContentItem[];

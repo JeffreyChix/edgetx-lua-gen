@@ -22,6 +22,7 @@
 
 import * as fs from "fs";
 import * as path from "path";
+import { createHash } from "crypto";
 import { LuaFunction, LuaConstant, LuaReturn, ApiDoc } from "./types";
 
 const TYPE_MAP: Record<string, string> = {
@@ -173,7 +174,9 @@ function emitOverloads(fn: LuaFunction): string[] {
     for (const l of restLines) lines.push(`--- ${l}`);
 
     if (param.flagHints?.length) {
-      lines.push(`--- <br><br>**Flag hints:** ${param.flagHints.join(", ")}<br><br>`);
+      lines.push(
+        `--- <br><br>**Flag hints:** ${param.flagHints.join(", ")}<br><br>`,
+      );
     }
 
     lines.push(
@@ -245,15 +248,17 @@ function writeModuleFile(
   nsName: string,
   outDir: string,
   headerDesc: string,
-): void {
+): { fileName: string; content: string } {
   // (exact) prevents LuaLS from allowing arbitrary field injection
   let body = `---@class (exact) ${nsName}Lib\n${nsName} = {}\n\n`;
   for (const fn of fns) body += emitFunction(fn, `${nsName}.`);
 
+  const fileName = `edgetx.${mod}.d.lua`;
+
   const content = buildFile(headerDesc, body);
-  const outPath = path.join(outDir, `edgetx.${mod}.lua`);
+  const outPath = path.join(outDir, fileName);
   fs.writeFileSync(outPath, content, "utf8");
-  console.log(`  Wrote ${outPath}  (${fns.length} functions)`);
+  return { fileName, content };
 }
 
 export function generateStubs(api: ApiDoc, outDir: string) {
@@ -261,6 +266,9 @@ export function generateStubs(api: ApiDoc, outDir: string) {
   console.log(
     `Generating stubs: ${api.functions.length} functions, ${api.constants.length} constants...`,
   );
+
+  const generatedFiles: string[] = [];
+  const hash = createHash("sha256");
 
   const byModule = new Map<string, LuaFunction[]>();
   for (const fn of api.functions) {
@@ -276,13 +284,16 @@ export function generateStubs(api: ApiDoc, outDir: string) {
     let body = "";
     for (const fn of fns) body += emitFunction(fn, "");
 
-    const outPath = path.join(outDir, "edgetx.globals.lua");
-    fs.writeFileSync(
-      outPath,
-      buildFile("Global functions available in all EdgeTX Lua scripts", body),
-      "utf8",
+    const fileName = "edgetx.globals.d.lua";
+    const content = buildFile(
+      "Global functions available in all EdgeTX Lua scripts",
+      body,
     );
-    console.log(`  Wrote ${outPath}  (${fns.length} functions)`);
+
+    const outPath = path.join(outDir, fileName);
+    fs.writeFileSync(outPath, content, "utf8");
+    hash.update(content);
+    generatedFiles.push(fileName);
   }
 
   // ── 2–4. Known namespaced modules ────────────────────────────────────────
@@ -296,7 +307,15 @@ export function generateStubs(api: ApiDoc, outDir: string) {
   };
 
   for (const [mod, { nsName, desc }] of Object.entries(KNOWN_MODULES)) {
-    writeModuleFile(byModule.get(mod) ?? [], mod, nsName, outDir, desc);
+    const { fileName, content } = writeModuleFile(
+      byModule.get(mod) ?? [],
+      mod,
+      nsName,
+      outDir,
+      desc,
+    );
+    hash.update(content);
+    generatedFiles.push(fileName);
   }
 
   // ── 5. Any unknown future modules ────────────────────────────────────────
@@ -304,7 +323,15 @@ export function generateStubs(api: ApiDoc, outDir: string) {
   for (const [mod, fns] of byModule) {
     if (handledModules.has(mod)) continue;
     const nsName = titleCase(mod);
-    writeModuleFile(fns, mod, nsName, outDir, `${nsName}.* functions`);
+    const { fileName, content } = writeModuleFile(
+      fns,
+      mod,
+      nsName,
+      outDir,
+      `${nsName}.* functions`,
+    );
+    hash.update(content);
+    generatedFiles.push(fileName);
   }
 
   // ── 6. Constants ─────────────────────────────────────────────────────────
@@ -328,37 +355,20 @@ export function generateStubs(api: ApiDoc, outDir: string) {
       }
     }
 
-    const outPath = path.join(outDir, "edgetx.constants.lua");
-    fs.writeFileSync(
-      outPath,
-      buildFile(`All EdgeTX constants (${api.constants.length} total)`, body),
-      "utf8",
+    const fileName = "edgetx.constants.d.lua";
+    const content = buildFile(
+      `All EdgeTX constants (${api.constants.length} total)`,
+      body,
     );
-    console.log(`  Wrote ${outPath}  (${api.constants.length} constants)`);
+
+    const outPath = path.join(outDir, fileName);
+    fs.writeFileSync(outPath, content, "utf8");
+    hash.update(content);
+    generatedFiles.push(fileName);
   }
-
-  // ── 7. .luarc.json ───────────────────────────────────────────────────────
-  {
-    const luarc = {
-      $schema:
-        "https://raw.githubusercontent.com/LuaLS/lua-language-server/master/meta/schemas/luarc.schema.json",
-      workspace: {
-        library: [outDir],
-        checkThirdParty: false,
-      },
-      runtime: { version: "Lua 5.2" },
-      diagnostics: {
-        globals: ["lcd", "model", "Bitmap"],
-      },
-    };
-
-    const outPath = path.join(outDir, ".luarc.json");
-    fs.writeFileSync(outPath, JSON.stringify(luarc, null, 2), "utf8");
-    console.log(`  Wrote ${outPath}`);
-  }
-
-  console.log(`\nDone! Add to your .luarc.json:\n`);
   console.log(`  "${path.resolve(outDir)}"\n`);
+
+  return { files: generatedFiles, stubHash: hash.digest("hex") };
 }
 
 function main() {

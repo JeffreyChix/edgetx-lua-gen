@@ -1,8 +1,18 @@
+import fs from "fs";
 import tinycolor from "tinycolor2";
 
 import { CURLY_PATTERN, LCD_FUNCTION_DEF_PATTERN, LROT_PATTERN } from "./regex";
-import { ScreenTypeSegment } from "./types";
+import { Manifest, ScreenTypeSegment, StubManifest } from "./types";
 
+export function fetcher(url: string) {
+  return fetch(url, {
+    headers: {
+      Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+    },
+  });
+}
 export function getVersionNumber(status: string): string {
   return status.match(/\d+(?:\.\d+)+/)?.[0] ?? "";
 }
@@ -152,4 +162,38 @@ export function splitIntoScreenTypeSegments(
 
   flush();
   return segments;
+}
+
+export function readAndParseManifest() {
+  try {
+    const data = fs.readFileSync("manifest.json", "utf-8");
+    return JSON.parse(data) as Manifest;
+  } catch (err) {
+    console.error("  Error reading and parsing manifest", err);
+    return null;
+  }
+}
+
+export function writeManifest(stubManifest: StubManifest) {
+  const versions = Object.fromEntries(
+    Object.entries(stubManifest).map(([version, entry]) => [
+      version,
+      {
+        generatedAt: new Date().toISOString(),
+        stubHash: entry.stubHash,
+        files: entry.files,
+        sources: Object.fromEntries(
+          entry.sources.map((source) => [source.path, source.sha]),
+        ),
+      },
+    ]),
+  );
+
+  const manifest: Manifest = {
+    manifestVersion: 1,
+    updatedAt: new Date().toISOString(),
+    versions,
+  };
+
+  fs.writeFileSync("manifest.json", JSON.stringify(manifest, null, 2), "utf-8");
 }

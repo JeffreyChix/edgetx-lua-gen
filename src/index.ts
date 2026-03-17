@@ -1,9 +1,10 @@
 // EdgeTX Lua API Extractor
 // Fetches EdgeTX C++ source files, parses /*luadoc */ blocks and C++ registration
 // tables, and writes a single structured JSON file for use in IDE tooling.
-
+import "dotenv/config";
 import * as fs from "fs";
 import * as path from "path";
+import util from "util";
 import {
   fetchAllSources,
   fetchAllEdgeTxVersions,
@@ -16,11 +17,14 @@ import {
   LuaConstant,
   Availability,
   ScreenTypeSegment,
+  GitHubContentItems,
+  StubManifest,
 } from "./types";
 import {
   matchLcdFunction,
   splitIntoScreenTypeSegments,
   versionLte,
+  writeManifest,
 } from "./helpers";
 import { generateStubs } from "./stubgen";
 
@@ -35,7 +39,7 @@ async function parseArgs() {
       outDir = args[++i];
     } else if (args[i] === "--version" && args[i + 1]) {
       versions.push(args[++i]);
-    } else if (args[i] === "--withStubs") {
+    } else if (args[i].toLowerCase() === "--withstubs") {
       withStubs = true;
     }
   }
@@ -128,6 +132,8 @@ function deduplicateConstants(constants: LuaConstant[]): LuaConstant[] {
 async function main() {
   const { outDir: outputDirectory, versions, withStubs } = await parseArgs();
 
+  const stubManifest: StubManifest = {};
+
   for (const version of versions) {
     const allFunctions: LuaFunction[] = [];
     const allConstants: LuaConstant[] = [];
@@ -143,7 +149,7 @@ async function main() {
     }
 
     // --- Parse each source file ---
-    for (const [sourceFile, content] of sources) {
+    for (const [sourceFile, { content, ...source }] of sources) {
       console.log(`\nParsing: ${sourceFile}`);
       const { functions, constants } = parseSourceFile(
         content,
@@ -159,6 +165,12 @@ async function main() {
       }
       allFunctions.push(...functions);
       allConstants.push(...constants);
+
+      if (!stubManifest[version]) {
+        stubManifest[version] = { sources: [], stubHash: "", files: [] };
+      }
+
+      stubManifest[version].sources.push(source);
     }
 
     const functions = deduplicateFunctions(
@@ -198,9 +210,19 @@ async function main() {
     console.log(`   Output    : ${path.resolve(outFile)}`);
 
     if (withStubs) {
-      generateStubs(apiDoc, path.join(outDir, "stubs"));
+      const { files, stubHash } = generateStubs(
+        apiDoc,
+        path.join(outDir, "stubs"),
+      );
+
+      stubManifest[version].stubHash = stubHash;
+      stubManifest[version].files = [...files, "edgetx-lua-api.json"];
     }
   }
+
+  writeManifest(stubManifest);
+
+  console.log(util.inspect(stubManifest, true));
 
   console.log("\n✅ Done");
   console.log(`   Versions generated : ${versions.length}`);

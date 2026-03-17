@@ -25,7 +25,6 @@ const PARAM_NAME_TYPE_MAP: Record<string, LuaValueType> = {
   name: "string",
   filename: "string",
   file: "string",
-  mode: "number",
   pattern: "number",
 };
 
