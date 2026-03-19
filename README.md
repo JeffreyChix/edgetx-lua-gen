@@ -17,7 +17,7 @@
 - Extracts flag hints (e.g. `BOLD`, `BLINK`, `PLAY_NOW`) from parameter descriptions
 - Tracks `availableOn` per function and constant: `GENERAL`, `COLOR_LCD`, or `NON_COLOR_LCD`
 - Generates `.d.lua` stub files for the Lua Language Server (LuaLS) with full annotation support
-- Publishes versioned stubs and a manifest to this repo — ready to be consumed by the EdgeTX Dev Kit VS Code extension (coming soon)
+- Publishes versioned stubs and a manifest to [edgetx-stubs](https://github.com/JeffreyChix/edgetx-stubs) — ready to be consumed by the EdgeTX Dev Kit VS Code extension (coming soon)
 
 ---
 
@@ -37,7 +37,7 @@ GitHub Actions (scheduled + push triggered)
         ├─ Generate .d.lua stubs per module
         ├─ Generate script type stubs (eg: telemetry script)
         ├─ Hash all output files
-        └─ Commit stubs + manifest back to this repo
+        └─ Commit stubs + manifest to edgetx-stubs repo
 ```
 
 The VS Code extension fetches `manifest.json` silently on activation and downloads only what has changed.
@@ -151,7 +151,7 @@ Each run produces a versioned `edgetx-lua-api.json` with two top-level arrays: `
 
 ## Manifest
 
-The generator maintains a `manifest.json` at the root of this repo. The VS Code extension uses it to silently detect when stubs need updating — without re-downloading everything every time.
+The generator maintains a `manifest.json` in the [edgetx-stubs](https://github.com/JeffreyChix/edgetx-stubs) repo. The VS Code extension uses it to silently detect when stubs need updating — without re-downloading everything every time.
 
 ```json
 {
@@ -192,20 +192,10 @@ The generator maintains a `manifest.json` at the root of this repo. The VS Code 
 
 ## Repo structure
 
+Generated stubs and the manifest are published to the [edgetx-stubs](https://github.com/JeffreyChix/edgetx-stubs) repo — this repo contains only the generator source and pipeline.
+
 ```
 /
-├── manifest.json               ← consumed by the VS Code extension
-├── stubs/
-│   ├── 2.10/
-│   │   ├── edgetx-lua-api.json
-│   │   ├── edgetx.globals.d.lua
-│   │   ├── edgetx.constants.d.lua
-│   │   ├── edgetx.scripts.d.lua
-│   │   ├── edgetx.bitmap.d.lua
-│   │   ├── edgetx.lcd.d.lua
-│   │   └── edgetx.model.d.lua
-│   └── 2.9/
-│       └── ...
 └── src/
     ├── index.ts          ← Entry point — CLI, orchestration, JSON output
     ├── fetcher.ts        ← Downloads C++ source files from the EdgeTX GitHub repo
@@ -276,7 +266,7 @@ npx tsx src/index.ts --version 2.10 --outDir ./releases/2.10 --withstubs
 
 ## Stub generation
 
-Stubs are generated as part of extraction via `--withstubs`. The generator produces one `.d.lua` file per Lua module, derived from the module prefix in each function's name (e.g. `lcd.drawText` → `lcd.d.lua`). Functions with no module prefix land in `edgetx.globals.d.lua`.
+Stubs are generated as part of extraction via `--withstubs` and published to [edgetx-stubs](https://github.com/JeffreyChix/edgetx-stubs). The generator produces one `.d.lua` file per Lua module, derived from the module prefix in each function's name (e.g. `lcd.drawText` → `lcd.d.lua`). Functions with no module prefix land in `edgetx.globals.d.lua`.
 
 ```
 stubs/2.10/
