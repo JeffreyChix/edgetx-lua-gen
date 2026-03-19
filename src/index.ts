@@ -140,7 +140,7 @@ async function main() {
 
     if (sources.size === 0) {
       console.error("No source files were loaded. Exiting.");
-      process.exit(1);
+      process.exit(0);
     }
 
     // --- Parse each source file ---

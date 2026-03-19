@@ -331,7 +331,7 @@ export const scriptTypes: Record<string, ScriptTypeDefinition> = {
       },
     ],
   },
-  mixes: {
+  mix: {
     description:
       "Custom mix script that reads inputs and produces outputs used in the mixer. Runs alongside built-in mixes.",
     notices: [

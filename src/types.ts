@@ -23,18 +23,9 @@ interface StubEntry {
 
 export type StubManifest = Record<string, StubEntry>;
 
-export type LuaEntityType = "function" | "constant" | "variable";
+export type LuaEntityType = "function" | "constant";
 
-export type LuaValueType =
-  | "number"
-  | "string"
-  | "boolean"
-  | "table"
-  | "function"
-  | "nil"
-  | "mixed"
-  | "unknown"
-  | string; // allows unions like "string|number"
+export type LuaValueType = string; 
 
 export type ConstantGroup =
   | "font"
