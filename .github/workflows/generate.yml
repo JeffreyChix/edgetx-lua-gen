@@ -36,8 +36,12 @@ jobs:
 
             - name: Commit if changed
               run: |
+                  git clone https://x-access-token:${{ secrets.STUBS_REPO_TOKEN }}@github.com/JeffreyChix/edgetx-stubs.git stubs-out
+                  cp -r stubs/ stubs-out/
+                  cp manifest.json stubs-out/
+                  cd stubs-out
                   git config user.name "github-actions[bot]"
                   git config user.email "github-actions[bot]@users.noreply.github.com"
-                  git add stubs/ manifest.json
-                  git diff --staged --quiet || git commit -m "chore: regenerate stubs"
+                  git add .
+                  git diff --cached --quiet || git commit -m "chore: regenerate stubs"
                   git push
