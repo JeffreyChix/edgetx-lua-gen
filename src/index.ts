@@ -1,6 +1,7 @@
 import "dotenv/config";
 import * as fs from "fs";
 import * as path from "path";
+import { createHash } from "crypto";
 import {
   fetchAllSources,
   fetchAllEdgeTxVersions,
@@ -199,12 +200,11 @@ async function main() {
     const edgetxApiFile = path.join(outDir, "edgetx-lua-api.json");
     const scriptTypesFile = path.join(outDir, "edgetx-script-types.json");
 
-    fs.writeFileSync(edgetxApiFile, JSON.stringify(apiDoc, null, 2), "utf-8");
-    fs.writeFileSync(
-      scriptTypesFile,
-      JSON.stringify(scriptTypes, null, 2),
-      "utf-8",
-    );
+    const edgetxApiJson = JSON.stringify(apiDoc, null, 2);
+    const scriptTypesJson = JSON.stringify(scriptTypes, null, 2);
+
+    fs.writeFileSync(edgetxApiFile, edgetxApiJson, "utf-8");
+    fs.writeFileSync(scriptTypesFile, scriptTypesJson, "utf-8");
 
     console.log("\n✅ Done");
     console.log(`   Functions : ${functions.length}`);
@@ -212,9 +212,13 @@ async function main() {
     console.log(`   Output    : ${path.resolve(edgetxApiFile)}`);
 
     if (withStubs) {
-      const { files, stubHash } = generateStubs(apiDoc, outDir, version);
+      const hash = createHash("sha256");
+      const { files } = generateStubs(apiDoc, outDir, version, hash);
+      
+      hash.update(edgetxApiJson);
+      hash.update(scriptTypesJson);
 
-      stubManifest[version].stubHash = stubHash;
+      stubManifest[version].stubHash = hash.digest("hex");
       stubManifest[version].files = [
         ...files,
         "edgetx-lua-api.json",
