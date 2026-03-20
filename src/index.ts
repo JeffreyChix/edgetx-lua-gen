@@ -21,6 +21,7 @@ import {
   versionLte,
   writeManifest,
 } from "./helpers";
+import { scriptTypes } from "./scriptTypes";
 import { generateStubs } from "./stubgen";
 
 async function parseArgs() {
@@ -195,20 +196,30 @@ async function main() {
     if (!fs.existsSync(outDir)) {
       fs.mkdirSync(outDir, { recursive: true });
     }
-    const outFile = path.join(outDir, "edgetx-lua-api.json");
+    const edgetxApiFile = path.join(outDir, "edgetx-lua-api.json");
+    const scriptTypesFile = path.join(outDir, "edgetx-script-types.json");
 
-    fs.writeFileSync(outFile, JSON.stringify(apiDoc, null, 2), "utf-8");
+    fs.writeFileSync(edgetxApiFile, JSON.stringify(apiDoc, null, 2), "utf-8");
+    fs.writeFileSync(
+      scriptTypesFile,
+      JSON.stringify(scriptTypes, null, 2),
+      "utf-8",
+    );
 
     console.log("\n✅ Done");
     console.log(`   Functions : ${functions.length}`);
     console.log(`   Constants : ${constants.length}`);
-    console.log(`   Output    : ${path.resolve(outFile)}`);
+    console.log(`   Output    : ${path.resolve(edgetxApiFile)}`);
 
     if (withStubs) {
       const { files, stubHash } = generateStubs(apiDoc, outDir, version);
 
       stubManifest[version].stubHash = stubHash;
-      stubManifest[version].files = [...files, "edgetx-lua-api.json"];
+      stubManifest[version].files = [
+        ...files,
+        "edgetx-lua-api.json",
+        "edgetx-script-types.json",
+      ];
     }
   }
 

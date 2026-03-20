@@ -192,6 +192,13 @@ export const scriptTypes: Record<string, ScriptTypeDefinition> = {
     ],
   },
   widget: {
+    generic: {
+      name: "TWidget",
+      type: "table",
+      description:
+        "Base widget table returned by create() and passed to update(), background(), and refresh().<br>Extend this class to add your own widget state fields.",
+    },
+
     description:
       "Displayed in a widget zone on color LCD radios. Widgets must be created via the EdgeTX widget system.",
     notices: [
@@ -218,23 +225,23 @@ export const scriptTypes: Record<string, ScriptTypeDefinition> = {
           },
           create: {
             optional: false,
-            signature: "fun(zone: Zone, options: WidgetOptions): WidgetContext",
+            signature: "fun(zone: Zone, options: WidgetOptions): TWidget",
             description:
               "Called when the widget is created. Must return a widget table",
           },
           update: {
             optional: true,
-            signature: "fun(widget: WidgetContext, options: WidgetOptions)",
+            signature: "fun(widget: TWidget, options: WidgetOptions)",
             description: "Called when the user changes widget options",
           },
           background: {
             optional: true,
-            signature: "fun(widget: WidgetContext)",
+            signature: "fun(widget: TWidget)",
             description: "Called when the widget is not in the foreground",
           },
           refresh: {
             optional: false,
-            signature: "fun(widget: WidgetContext)",
+            signature: "fun(widget: TWidget)",
             description:
               "Called every cycle to draw the widget. No touch support in 2.3",
           },
@@ -258,24 +265,24 @@ export const scriptTypes: Record<string, ScriptTypeDefinition> = {
           },
           create: {
             optional: false,
-            signature: "fun(zone: Zone, options: WidgetOptions): WidgetContext",
+            signature: "fun(zone: Zone, options: WidgetOptions): TWidget",
             description:
               "Called when the widget is created. Must return a widget table",
           },
           update: {
             optional: true,
-            signature: "fun(widget: WidgetContext, options: WidgetOptions)",
+            signature: "fun(widget: TWidget, options: WidgetOptions)",
             description: "Called when the user changes widget options",
           },
           background: {
             optional: true,
-            signature: "fun(widget: WidgetContext)",
+            signature: "fun(widget: TWidget)",
             description: "Called when the widget is not in the foreground",
           },
           refresh: {
             optional: false,
             signature:
-              "fun(widget: WidgetContext, event: number, touchState?: TouchState)",
+              "fun(widget: TWidget, event: number, touchState?: TouchState)",
             description:
               "Called every cycle to draw the widget. No touch support in 2.3",
           },
@@ -603,7 +610,11 @@ export const scriptStructures: Record<string, LuaStructure> = {
         type: "string",
         description: "Option name. Max 10 characters, no spaces",
       },
-      { key: 2, type: "`TEXT_SIZE`", description: "Always the TEXT_SIZE constant" },
+      {
+        key: 2,
+        type: "`TEXT_SIZE`",
+        description: "Always the TEXT_SIZE constant",
+      },
       { key: 3, type: "integer", description: "Default value" },
     ],
   },
@@ -618,7 +629,11 @@ export const scriptStructures: Record<string, LuaStructure> = {
         type: "string",
         description: "Option name. Max 10 characters, no spaces",
       },
-      { key: 2, type: "`ALIGNMENT`", description: "Always the ALIGNMENT constant" },
+      {
+        key: 2,
+        type: "`ALIGNMENT`",
+        description: "Always the ALIGNMENT constant",
+      },
       { key: 3, type: "integer", description: "Default value" },
     ],
   },
@@ -696,18 +711,5 @@ export const scriptStructures: Record<string, LuaStructure> = {
     description:
       "Table of widget options. Max 5 options in 2.10 or earlier, max 10 from 2.11.",
     type: "WidgetOption[]",
-  },
-
-  WidgetContext: {
-    kind: "class",
-    description:
-      "Base widget table returned by create() and passed to update(), background(), and refresh().<br>Extend this class to add your own widget state fields.",
-    fields: [
-      {
-        key: "zone",
-        type: "Zone",
-        description: "The zone passed at creation time",
-      },
-    ],
   },
 };

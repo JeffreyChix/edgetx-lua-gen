@@ -12,7 +12,7 @@ jobs:
         runs-on: ubuntu-latest
 
         permissions:
-            contents: write # needed to commit stubs + manifest back
+            contents: write
 
         steps:
             - name: Checkout

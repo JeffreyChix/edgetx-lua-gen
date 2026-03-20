@@ -21,8 +21,7 @@ function emitSharedTypes(): string {
 
     for (const [fieldName, field] of Object.entries(typeDef.fields)) {
       const optionalMark = field.optional ? "?" : "";
-      out += `--- ${field.description.replace(/\n/g, "\n--- ")}\n`;
-      out += `---@field ${fieldName}${optionalMark} ${field.type}\n`;
+      out += `---@field ${fieldName}${optionalMark} ${field.type} #${field.description.replace(/\n/g, "<br>")}\n`;
     }
 
     out += "\n";
@@ -39,24 +38,24 @@ function emitScriptType(typeName: string, version: string): string {
   if (!entry) return "";
 
   let out = "";
+  const generic = scriptType.generic;
 
-  // class description
+  if (generic) {
+    out += `---@generic ${generic.name}: ${generic.type} #${generic.description}\n`;
+  }
+
   out += `--- ${scriptType.description}\n`;
 
-  // notices as warnings
   for (const notice of scriptType.notices) {
     out += `--- >⚠️ ${notice}<br>\n`;
   }
 
-  const className = `${typeName.charAt(0).toUpperCase() + typeName.slice(1)}Script`;
+  const className = `${typeName.charAt(0).toUpperCase() + typeName.slice(1)}Script${generic ? `<${generic.name}>` : ""}`;
   out += `---@class (exact) ${className}\n`;
 
   for (const [fieldName, field] of Object.entries(entry.fields)) {
-    out += `--- ${field.description.replace(/\n/g, "\n--- ")}\n`;
-
-    // optional fields use fieldName? syntax
     const optionalMark = field.optional ? "?" : "";
-    out += `---@field ${fieldName}${optionalMark} ${field.signature}\n`;
+    out += `---@field ${fieldName}${optionalMark} ${field.signature} #${field.description.replace(/\n/g, ". ")}\n`;
   }
 
   out += "\n";
@@ -72,8 +71,7 @@ function emitStructure(name: string, def: LuaStructure): string {
     for (const field of def.fields) {
       const key = typeof field.key === "number" ? `[${field.key}]` : field.key;
       const optional = field.optional ? "?" : "";
-      out += `--- ${field.description.replace(/\n/g, "\n--- ")}\n`;
-      out += `---@field ${key}${optional} ${field.type}\n`;
+      out += `---@field ${key}${optional} ${field.type} #${field.description.replace(/\n/g, ". ")}\n`;
     }
   } else {
     if (def.description) out += `--- ${def.description}\n`;

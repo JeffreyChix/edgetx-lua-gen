@@ -33,7 +33,7 @@ GitHub Actions (scheduled + push triggered)
         │
         ├─ Fetch source file SHAs from EdgeTX repo
         ├─ Compare against manifest — skip if nothing changed
-        ├─ Parse changed sources → generate edgetx-lua-api.json
+        ├─ Parse changed sources → generate edgetx-lua-api.json and edgetx-script-types.json
         ├─ Generate .d.lua stubs per module
         ├─ Generate script type stubs (eg: telemetry script)
         ├─ Hash all output files
@@ -46,7 +46,7 @@ The VS Code extension fetches `manifest.json` silently on activation and downloa
 
 ## Output shape
 
-Each run produces a versioned `edgetx-lua-api.json` with two top-level arrays: `functions` and `constants`, plus a set of `.d.lua` stub files per EdgeTX version.
+Each run produces a versioned `edgetx-lua-api.json` with two top-level arrays: `functions` and `constants`, plus `edgetx-script-types.json` and a set of `.d.lua` stub files per EdgeTX version.
 
 ```json
 {
@@ -237,6 +237,9 @@ NODE_ENV=development
 # Fetch latest from GitHub (main branch) and write to stubs/
 npm start
 
+# Fetch all from GitHub and write to stubs/
+npm run all
+
 # Equivalent explicit form
 npx tsx src/index.ts --version main --withstubs
 ```
@@ -271,6 +274,7 @@ Stubs are generated as part of extraction via `--withstubs` and published to [ed
 ```
 stubs/2.10/
 ├── edgetx-lua-api.json       ← full merged API, all sources
+├── edgetx-script-types.json  ← edgetx script types
 ├── edgetx.globals.d.lua      ← global functions (no module prefix)
 ├── edgetx.constants.d.lua    ← all constants grouped by module
 ├── edgetx.scripts.d.lua      ← script types

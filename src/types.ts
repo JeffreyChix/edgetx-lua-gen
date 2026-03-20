@@ -25,7 +25,7 @@ export type StubManifest = Record<string, StubEntry>;
 
 export type LuaEntityType = "function" | "constant";
 
-export type LuaValueType = string; 
+export type LuaValueType = string;
 
 export type ConstantGroup =
   | "font"
@@ -136,6 +136,7 @@ export interface ScriptVersion {
 }
 
 export interface ScriptTypeDefinition {
+  generic?: { name: string; description: string; type: string };
   description: string;
   notices: string[];
   versions: ScriptVersion[];
