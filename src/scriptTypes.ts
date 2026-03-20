@@ -97,6 +97,8 @@ export const sharedTypes: Record<string, SharedTypeDefinition> = {
   // ...
 };
 
+const SAMPLE_WIDGET_SCHEMA = "{item1:string; item2:number}";
+
 export const scriptTypes: Record<string, ScriptTypeDefinition> = {
   oneTime: {
     description:
@@ -197,6 +199,7 @@ export const scriptTypes: Record<string, ScriptTypeDefinition> = {
       type: "table",
       description:
         "Base widget table returned by create() and passed to update(), background(), and refresh().<br>Extend this class to add your own widget state fields.",
+      sample: SAMPLE_WIDGET_SCHEMA,
     },
 
     description:
@@ -228,6 +231,7 @@ export const scriptTypes: Record<string, ScriptTypeDefinition> = {
             signature: "fun(zone: Zone, options: WidgetOptions): TWidget",
             description:
               "Called when the widget is created. Must return a widget table",
+            returnSample: SAMPLE_WIDGET_SCHEMA,
           },
           update: {
             optional: true,
@@ -268,6 +272,7 @@ export const scriptTypes: Record<string, ScriptTypeDefinition> = {
             signature: "fun(zone: Zone, options: WidgetOptions): TWidget",
             description:
               "Called when the widget is created. Must return a widget table",
+            returnSample: SAMPLE_WIDGET_SCHEMA,
           },
           update: {
             optional: true,

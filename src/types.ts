@@ -127,6 +127,7 @@ export interface ScriptField {
   optional: boolean;
   signature: string;
   description: string;
+  returnSample?: string;
 }
 
 export interface ScriptVersion {
@@ -136,7 +137,7 @@ export interface ScriptVersion {
 }
 
 export interface ScriptTypeDefinition {
-  generic?: { name: string; description: string; type: string };
+  generic?: { name: string; description: string; type: string; sample: string };
   description: string;
   notices: string[];
   versions: ScriptVersion[];
