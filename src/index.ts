@@ -1,7 +1,6 @@
 import "dotenv/config";
 import * as fs from "fs";
 import * as path from "path";
-import { createHash } from "crypto";
 import {
   fetchAllSources,
   fetchAllEdgeTxVersions,
@@ -118,12 +117,11 @@ function resolveAvailability(
 }
 
 function deduplicateConstants(constants: LuaConstant[]): LuaConstant[] {
-  const seen = new Set<string>();
-  return constants.filter((c) => {
-    if (seen.has(c.name)) return false;
-    seen.add(c.name);
-    return true;
-  });
+  const seen = new Map<string, LuaConstant>();
+  for (const c of constants) {
+    seen.set(c.name, c);
+  }
+  return [...seen.values()];
 }
 
 async function main() {
@@ -131,9 +129,15 @@ async function main() {
 
   const stubManifest: StubManifest = {};
 
+  // Constants accumulate across versions because newer EdgeTX releases sometimes
+  // omit constant definitions that were present in earlier source files. (NOT DEPRECATED)
+  // By carrying constants forward, each version's output includes the full set
+  // seen up to that point. Later definitions take precedence over earlier ones,
+  // so if a constant reappears in a newer version, its updated metadata wins.
+  const allConstants: LuaConstant[] = [];
+
   for (const version of versions) {
     const allFunctions: LuaFunction[] = [];
-    const allConstants: LuaConstant[] = [];
 
     let v2_3LcdFunctionsSegments: ScreenTypeSegment[] = [];
 
@@ -212,9 +216,8 @@ async function main() {
     console.log(`   Output    : ${path.resolve(edgetxApiFile)}`);
 
     if (withStubs) {
-      const hash = createHash("sha256");
-      const { files } = generateStubs(apiDoc, outDir, version, hash);
-      
+      const { files, hash } = generateStubs(apiDoc, outDir, version);
+
       hash.update(edgetxApiJson);
       hash.update(scriptTypesJson);
 

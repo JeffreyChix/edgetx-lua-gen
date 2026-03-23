@@ -284,7 +284,7 @@ function parseSignatureParams(signature: string): {
 }
 
 // ---------------------------------------------------------------------------
-// Table structure parser  (fix #5)
+// Table structure parser
 //
 // Parses the body of a @retval table description like:
 //   "table custom function data:\n * `switch` (number) switch index\n * ..."
@@ -684,10 +684,6 @@ function parseAtNameFunctionBlock(
     return null;
   }
 }
-
-// ---------------------------------------------------------------------------
-// Full source file parser
-// ---------------------------------------------------------------------------
 
 export function parseSourceFile(
   source: string,

@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-import { createHash, Hash } from "crypto";
+import { createHash } from "crypto";
 import { LuaFunction, LuaConstant, LuaReturn, ApiDoc } from "./types";
 import { generateScriptStubs } from "./scriptsgen";
 
@@ -238,18 +238,14 @@ function writeModuleFile(
   return { fileName, content };
 }
 
-export function generateStubs(
-  api: ApiDoc,
-  outDir: string,
-  version: string,
-  hash: Hash,
-) {
+export function generateStubs(api: ApiDoc, outDir: string, version: string) {
   fs.mkdirSync(outDir, { recursive: true });
   console.log(
     `Generating stubs: ${api.functions.length} functions, ${api.constants.length} constants...`,
   );
 
   const generatedFiles: string[] = [];
+  const hash = createHash("sha256");
 
   const byModule = new Map<string, LuaFunction[]>();
   for (const fn of api.functions) {
@@ -356,7 +352,7 @@ export function generateStubs(
     hash.update(content);
   }
 
-  return { files: generatedFiles };
+  return { files: generatedFiles, hash };
 }
 
 function main() {
@@ -377,9 +373,8 @@ function main() {
     process.exit(1);
   }
 
-  const hash = createHash("sha256");
   const api: ApiDoc = JSON.parse(fs.readFileSync(inputFile, "utf8"));
-  generateStubs(api, outDir, "main", hash);
+  generateStubs(api, outDir, "main");
 }
 
 if (require.main === module) {
