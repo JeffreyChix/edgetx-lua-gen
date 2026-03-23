@@ -17,7 +17,7 @@
 - Extracts flag hints (e.g. `BOLD`, `BLINK`, `PLAY_NOW`) from parameter descriptions
 - Tracks `availableOn` per function and constant: `GENERAL`, `COLOR_LCD`, or `NON_COLOR_LCD`
 - Generates `.d.lua` stub files for the Lua Language Server (LuaLS) with full annotation support
-- Publishes versioned stubs and a manifest to [edgetx-stubs](https://github.com/JeffreyChix/edgetx-stubs) — ready to be consumed by the EdgeTX Dev Kit VS Code extension (coming soon)
+- Publishes versioned stubs and a manifest to [edgetx-stubs](https://github.com/JeffreyChix/edgetx-stubs) — ready to be consumed by the [EdgeTX Dev Kit](https://github.com/JeffreyChix/edgetx-dev-kit) VS Code extension
 
 ---
 
