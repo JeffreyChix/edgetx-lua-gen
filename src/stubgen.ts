@@ -63,7 +63,7 @@ function emitClassDefs(fn: LuaFunction): string[] {
       const fieldDesc = sanitizeDesc(field.description);
       lines.push(
         fieldDesc
-          ? `---@field ${field.name} ${fieldType} ${fieldDesc}`
+          ? `---@field ${field.name} ${fieldType} #${fieldDesc}`
           : `---@field ${field.name} ${fieldType}`,
       );
     }
@@ -93,7 +93,7 @@ function emitParams(params: LuaFunction["parameters"]): string[] {
     const [firstLine, ...restLines] = desc.split("\n");
     lines.push(
       firstLine
-        ? `---@param ${paramName}${optMark} ${pType} ${firstLine}`
+        ? `---@param ${paramName}${optMark} ${pType} #${firstLine}`
         : `---@param ${paramName}${optMark} ${pType}`,
     );
     for (const l of restLines) lines.push(`--- ${l}`);
@@ -119,7 +119,7 @@ function emitReturns(fn: LuaFunction): string[] {
     const [firstLine, ...restLines] = desc.split("\n");
 
     const namePart = rName ? ` ${rName}` : "";
-    const descPart = firstLine ? ` # ${firstLine}` : "";
+    const descPart = firstLine ? ` #${firstLine}` : "";
     lines.push(`---@return ${rType}${namePart}${descPart}`);
     for (const l of restLines) lines.push(`--- ${l}`);
   }
@@ -145,7 +145,7 @@ function emitOverloads(fn: LuaFunction): string[] {
     const [firstLine, ...restLines] = desc.split("\n");
     lines.push(
       firstLine
-        ? `---@param ${paramName}${optMark} ${pType} ${firstLine}`
+        ? `---@param ${paramName}${optMark} ${pType} #${firstLine}`
         : `---@param ${paramName}${optMark} ${pType}`,
     );
     for (const l of restLines) lines.push(`--- ${l}`);

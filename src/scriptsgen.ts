@@ -51,7 +51,7 @@ function emitScriptType(typeName: string, version: string): string {
   }
 
   const className = `${typeName.charAt(0).toUpperCase() + typeName.slice(1)}Script${generic ? `<${generic.name}>` : ""}`;
-  out += `---@class (exact) ${className}\n`;
+  out += `---@class ${className}\n`;
 
   for (const [fieldName, field] of Object.entries(entry.fields)) {
     const optionalMark = field.optional ? "?" : "";
