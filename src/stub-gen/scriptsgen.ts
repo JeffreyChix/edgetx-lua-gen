@@ -1,8 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
-import { sharedTypes, scriptTypes, scriptStructures } from "./scriptTypes";
-import { versionGte, versionLte } from "./helpers";
-import type { LuaStructure, ScriptVersion } from "./types";
+import { sharedTypes, scriptTypes, scriptStructures } from "../scriptTypes";
+import { versionGte, versionLte } from "../helpers";
 
 function findVersionEntry(version: string): (entry: ScriptVersion) => boolean {
   return (entry) => {

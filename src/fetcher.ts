@@ -1,17 +1,14 @@
-import {
-  fetcher,
-  parseVersion,
-  readAndParseManifest,
-  versionGte,
-} from "./helpers";
-import { GitHubContentItem, GitHubContentItems } from "./types";
+import fs from "fs";
+
+import { fetcher, parseVersion, versionGte } from "./helpers";
 
 const EDGETX_REPO_SOURCEBASE = "https://api.github.com/repos/EdgeTX/edgetx";
 
 const LUA_REFERENCE_GUIDE_SOURCEBASE =
   "https://api.github.com/repos/EdgeTX/lua-reference-guide";
 
-const LVGL_CONSTANTS_DOWNLOAD_URL = `https://raw.githubusercontent.com/EdgeTX/lua-reference-guide/edgetx_2.11/lua-api-reference/lvgl-for-lua/constants.md`;
+const REMOTE_MANIFEST_URL =
+  "https://raw.githubusercontent.com/JeffreyChix/edgetx-stubs/main/manifest.json";
 
 // Versions 2.3+
 export async function fetchAllEdgeTxVersions(): Promise<string[]> {
@@ -45,18 +42,47 @@ async function fetchSourceFiles(version: string) {
     throw new Error(`Failed to fetch source file version: ${version}`);
   }
 
-  const sourceFiles = (await res.json()) as GitHubContentItems;
+  const sourceFiles = (await res.json()) as Sources;
 
   return sourceFiles.filter(
-    (file) => file.name.startsWith("api_") && file.name.endsWith(".cpp"),
+    (file) =>
+      file.name.startsWith("api_") &&
+      file.name.endsWith(".cpp") &&
+      !file.name.includes("lvgl"),
   );
 }
 
-function hasSourceChanged(
-  sourceFiles: GitHubContentItems,
+async function fetchLvglSources(version: string) {
+  if (version === "main" || !versionGte(version, "2.11")) {
+    return [];
+  }
+
+  const res = await fetcher(
+    LUA_REFERENCE_GUIDE_SOURCEBASE +
+      `/contents/lua-api-reference/lvgl-for-lua?ref=edgetx_${version}`,
+  );
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch LVGL sources for version ${version}`);
+  }
+
+  let sources = (await res.json()) as Sources;
+
+  return sources.filter(
+    (s) =>
+      s.name.startsWith("lvgl") ||
+      s.name === "constants.md" ||
+      s.name === "api.md",
+  );
+}
+
+async function hasSourceChanged(
+  sourceFiles: Sources,
   version: string,
-): boolean {
-  const manifest = readAndParseManifest();
+): Promise<boolean> {
+  const data = await fetchSourceFile(REMOTE_MANIFEST_URL);
+  const manifest = JSON.parse(data) as Manifest;
+
   if (!manifest) return true; // no manifest, always generate
 
   const manifestVersion = manifest.versions[version];
@@ -80,31 +106,51 @@ export async function fetchSourceFile(sourceFileUrl: string): Promise<string> {
   return res.text();
 }
 
-type AllSources = Map<string, { content: string } & GitHubContentItem>;
+async function fetchSources(
+  sources: Sources,
+  target: SourceTarget,
+): Promise<void> {
+  await Promise.all(
+    sources.map(async (source) => {
+      try {
+        const content = await fetchSourceFile(source.download_url);
+        target.set(source.name, { content, ...source });
+      } catch (err) {
+        console.error(`  SKIP: ${(err as Error).message}`);
+      }
+    }),
+  );
+}
 
 export async function fetchAllSources(version: string): Promise<AllSources> {
-  const sourceFiles = await fetchSourceFiles(version);
+  const [mainSources, lvglSources] = await Promise.all([
+    fetchSourceFiles(version),
+    fetchLvglSources(version),
+  ]);
 
-  const results: AllSources = new Map();
+  const results: AllSources = {
+    mainSources: new Map(),
+    lvglSources: new Map(),
+  };
 
   const isDev = process.env.NODE_ENV === "development";
   const trigger = process.env.TRIGGER;
   const forceRegenerate =
     isDev || trigger === "push" || trigger === "workflow_dispatch";
 
-  if (!forceRegenerate && !hasSourceChanged(sourceFiles, version)) {
+  const isSourceChanged = await hasSourceChanged(
+    mainSources.concat(lvglSources),
+    version,
+  );
+
+  if (!forceRegenerate && !isSourceChanged) {
     return results;
   }
 
-  for (const sourceFile of sourceFiles) {
-    try {
-      const content = await fetchSourceFile(sourceFile.download_url);
-      results.set(sourceFile.name, { content, ...sourceFile });
-      console.log(`  OK: ${content.length} bytes`);
-    } catch (err) {
-      console.error(`  SKIP: ${(err as Error).message}`);
-    }
-  }
+  await Promise.all([
+    fetchSources(mainSources, results.mainSources),
+    fetchSources(lvglSources, results.lvglSources),
+  ]);
 
   return results;
 }
@@ -138,7 +184,7 @@ export async function fetchConstantMarkdownSources(version: string) {
     throw new Error("Could not fetch lua reference guide contents.");
   }
 
-  const luaGuideContents = (await resLuaGuide.json()) as GitHubContentItems;
+  const luaGuideContents = (await resLuaGuide.json()) as Sources;
 
   const luaApiRefBlock = luaGuideContents.find(
     ({ name }) =>
@@ -154,7 +200,7 @@ export async function fetchConstantMarkdownSources(version: string) {
     throw new Error("Could not fetch lua api reference contents.");
   }
 
-  const luaApiRefContents = (await resLuaApiRef.json()) as GitHubContentItems;
+  const luaApiRefContents = (await resLuaApiRef.json()) as Sources;
 
   const constantFolderBlock = luaApiRefContents.find(({ path }) =>
     path.toLowerCase().includes("/constants"),
@@ -168,20 +214,7 @@ export async function fetchConstantMarkdownSources(version: string) {
     throw new Error("Could not fetch constant source folders.");
   }
 
-  const constantSources =
-    (await resConstantFolders.json()) as GitHubContentItems;
-
-  if (versionGte(version, "2.11")) {
-    // api_colorlcd_lvgl.cpp introduced in 2.11
-    // add lvgl constant definitions markdown file to the sources
-    constantSources.push({
-      download_url: LVGL_CONSTANTS_DOWNLOAD_URL,
-      name: "constants.md",
-      path: "lua-api-reference/lvgl-for-lua/constants.md",
-      url: "",
-      sha: "",
-    });
-  }
+  const constantSources = (await resConstantFolders.json()) as Sources;
 
   return constantSources.filter(
     (source) => !source.download_url.includes("README.md"),

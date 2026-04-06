@@ -46,7 +46,7 @@ The VS Code extension fetches `manifest.json` silently on activation and downloa
 
 ## Output shape
 
-Each run produces a versioned `edgetx-lua-api.json` with two top-level arrays: `functions` and `constants`, plus `edgetx-script-types.json` and a set of `.d.lua` stub files per EdgeTX version.
+Each run produces a versioned `edgetx-lua-api.json` with three top-level arrays: `functions`, `constants`, and `lvgl` plus `edgetx-script-types.json` and a set of `.d.lua` stub files per EdgeTX version.
 
 ```json
 {
@@ -103,7 +103,286 @@ Each run produces a versioned `edgetx-lua-api.json` with two top-level arrays: `
       "sourceFile": "api_colorlcd.cpp",
       "availableOn": "COLOR_LCD"
     }
-  ]
+  ],
+  "lvgl": {
+    "functions": [
+      {
+        "entityType": "function",
+        "signature": [
+          "lvgl.align([parent], {settings})",
+          "parent:align({settings})"
+        ],
+        "name": "align",
+        "module": "lvgl",
+        "parameters": [
+          {
+            "name": "parent",
+            "description": "Parent LGVL object. If set then whatever LVGL objects are created by the function are set as children of 'parent'. If not set then objects are created in the top level script window.",
+            "type": "Lv_obj",
+            "flagHints": [],
+            "optional": true
+          },
+          {
+            "name": "settings",
+            "description": "Contains all of the settings required to create the LVGL object.",
+            "type": "AlignSettings",
+            "flagHints": [],
+            "optional": false
+          }
+        ],
+        "description": "Display a button showing a text alignment name. When tapped a popup menu is opened to choose a text alignment from. Uses EdgeTX styling.",
+        "notices": [
+          "The popup menu is closed when the user selects an item, and the 'set' function is called.\n\nIf the user taps outside the menu or the RTN key is pressed, the popup menu is closed and the 'set' function is not called."
+        ],
+        "status": "",
+        "returns": [],
+        "sinceVersion": "2.11.0",
+        "deprecated": false,
+        "overloadParameters": [
+          {
+            "name": "settings",
+            "optional": false,
+            "description": "Contains all of the settings required to create the LVGL object.",
+            "flagHints": [],
+            "type": "AlignSettings"
+          }
+        ],
+        "availableOn": "COLOR_LCD",
+        "sourceFile": "lvgl.align.md"
+      }
+    ],
+    "constants": [
+      {
+        "name": "FLOW_ROW",
+        "module": "lvgl",
+        "availableOn": "COLOR_LCD",
+        "entityType": "constant",
+        "sourceFile": "constants.md",
+        "type": "number",
+        "description": "Sets flex layout flow."
+      }
+    ],
+    "classes:": [
+      {
+        "entityType": "class",
+        "name": "ChoiceSettings",
+        "fields": [
+          {
+            "name": "x",
+            "type": "number",
+            "description": "Horizontal position of the object relative to the top left corner of the parent object.",
+            "flagHints": [],
+            "optional": true,
+            "sinceVersion": "",
+            "notices": ["Default if not set: 0"],
+            "returns": []
+          },
+          {
+            "name": "y",
+            "type": "number",
+            "description": "Vertical position of the object relative to the top left corner of the parent object.",
+            "flagHints": [],
+            "optional": true,
+            "sinceVersion": "",
+            "notices": ["Default if not set: 0"],
+            "returns": []
+          },
+          {
+            "name": "w",
+            "type": "number",
+            "description": "Width of the object",
+            "flagHints": [],
+            "optional": true,
+            "sinceVersion": "",
+            "notices": ["Default if not set: Auto size to fit content"],
+            "returns": []
+          },
+          {
+            "name": "h",
+            "type": "number",
+            "description": "Height of the object",
+            "flagHints": [],
+            "optional": true,
+            "sinceVersion": "",
+            "notices": ["Default if not set: Auto size to fit content"],
+            "returns": []
+          },
+          {
+            "name": "color",
+            "type": "number|function",
+            "description": "Primary color for the object.",
+            "flagHints": [],
+            "optional": true,
+            "sinceVersion": "",
+            "notices": ["Default if not set: COLOR_THEME_SECONDARY1"],
+            "returns": []
+          },
+          {
+            "name": "pos",
+            "type": "function",
+            "description": "Position of the object relative to the top left corner of the parent object.\nMust return two values - x, y.",
+            "flagHints": [],
+            "optional": true,
+            "sinceVersion": "",
+            "notices": ["Default if not set: nil"],
+            "returns": [
+              {
+                "name": "x",
+                "type": "number",
+                "description": ""
+              },
+              {
+                "name": "y",
+                "type": "number",
+                "description": ""
+              }
+            ]
+          },
+          {
+            "name": "size",
+            "type": "function",
+            "description": "Size of the object. Must return two values - width, height.",
+            "flagHints": [],
+            "optional": true,
+            "sinceVersion": "",
+            "notices": ["Default if not set: nil"],
+            "returns": [
+              {
+                "name": "width",
+                "type": "number",
+                "description": ""
+              },
+              {
+                "name": "height",
+                "type": "number",
+                "description": ""
+              }
+            ]
+          },
+          {
+            "name": "visible",
+            "type": "function",
+            "description": "Controls visibility of the object. Must return a boolean - true if the object is shown, false to hide it.",
+            "flagHints": [],
+            "optional": true,
+            "sinceVersion": "",
+            "notices": ["Default if not set: nil"],
+            "returns": [
+              {
+                "name": "controls",
+                "type": "boolean",
+                "description": "visibility of the object. must return a boolean - true if the object is shown, false to hide it."
+              }
+            ]
+          },
+          {
+            "name": "floating",
+            "type": "boolean",
+            "description": "If set to true then the associated object will remain fixed in place on the screen if it is within a scrollable container regardless of how the container is scrolled.\n\nCaveats:\n- has no effect if the object container is not scrollable\n- may not work as expected in flex containers\n- nested containers with more than one container having floating set to true may not work as expected",
+            "flagHints": [],
+            "optional": true,
+            "sinceVersion": "2.11.6",
+            "notices": ["Default if not set: false"],
+            "returns": []
+          },
+          {
+            "name": "title",
+            "type": "string",
+            "description": "Text to be displayed in the header of the popup menu.",
+            "flagHints": [],
+            "optional": true,
+            "sinceVersion": "",
+            "notices": ["Default if not set: Empty string"],
+            "returns": []
+          },
+          {
+            "name": "values",
+            "type": "table",
+            "description": "Must contain a simple table of strings. Each string defines an options shown in the popup menu.\n\nThe values table can be changed using the 'lvgl.set' function (in 2.11.6 or later).",
+            "flagHints": [],
+            "optional": true,
+            "sinceVersion": "",
+            "notices": ["Default if not set: Empty list"],
+            "returns": []
+          },
+          {
+            "name": "get",
+            "type": "function",
+            "description": "Called to get the index of the currently selected option, when the popup menu is first opened.\nMust return a number between 1 and the number of values.",
+            "flagHints": [],
+            "optional": true,
+            "sinceVersion": "",
+            "notices": ["Default if not set: nil"],
+            "returns": [
+              {
+                "name": "called",
+                "type": "number",
+                "description": "to get the index of the currently selected option, when the popup menu is first opened.\nmust return a number between 1 and the number of values."
+              }
+            ]
+          },
+          {
+            "name": "set",
+            "type": "function",
+            "description": "Called when the user taps on a menu item.\nThe function is passed a single parameter wihich is the index of the selected item (1 .. number of values)",
+            "flagHints": [],
+            "optional": true,
+            "sinceVersion": "",
+            "notices": ["Default if not set: nil"],
+            "returns": [
+              {
+                "name": "called",
+                "type": "number|function",
+                "description": "when the user taps on a menu item.\nthe function is passed a single parameter wihich is the index of the selected item (1 .. number of values)"
+              }
+            ]
+          },
+          {
+            "name": "active",
+            "type": "function",
+            "description": "Set the enabled / disabled state. Return value must be a boolean - true to enable the control, false to disable.",
+            "flagHints": [],
+            "optional": true,
+            "sinceVersion": "",
+            "notices": ["Default if not set: nil"],
+            "returns": [
+              {
+                "name": "set",
+                "type": "boolean",
+                "description": "the enabled / disabled state. return value must be a boolean - true to enable the control, false to disable."
+              }
+            ]
+          },
+          {
+            "name": "filter",
+            "type": "function",
+            "description": "Allows the popup menu list to be filtered when the user opens the popup.\nThis function is called for each option in the values table. The index of the option is passed as a parameter to the function.\nIf the function returns true the option is shown in the popup, false will hide the option.",
+            "flagHints": [],
+            "optional": true,
+            "sinceVersion": "",
+            "notices": ["Default if not set: nil"],
+            "returns": [
+              {
+                "name": "allows",
+                "type": "boolean|number|table|function",
+                "description": "the popup menu list to be filtered when the user opens the popup.\nthis function is called for each option in the values table. the index of the option is passed as a parameter to the function.\nif the function returns true the option is shown in the popup, false will hide the option."
+              }
+            ]
+          },
+          {
+            "name": "popupWidth",
+            "type": "number",
+            "description": "Set the width of the popup window.",
+            "flagHints": [],
+            "optional": true,
+            "sinceVersion": "",
+            "notices": ["Default if not set: 0 (use default width)"],
+            "returns": []
+          }
+        ]
+      }
+    ]
+  }
 }
 ```
 
@@ -114,7 +393,7 @@ Each run produces a versioned `edgetx-lua-api.json` with two top-level arrays: `
 | `entityType`         | `"function"`                                  | Always `"function"`                                                          |
 | `module`             | `string`                                      | Lua namespace: `"general"`, `"lcd"`, `"model"`, `"Bitmap"`                   |
 | `name`               | `string`                                      | Function name                                                                |
-| `signature`          | `string`                                      | Full human-readable signature from luadoc                                    |
+| `signature`          | `string or string[]`                                      | Full human-readable signature from luadoc                                    |
 | `description`        | `string`                                      | Doc comment body                                                             |
 | `parameters`         | `LuaParam[]`                                  | Ordered list of parameters                                                   |
 | `overloadParameters` | `LuaParam[]`                                  | Alternate parameter list for overloaded signatures (e.g. `rgb` vs `r, g, b`) |
@@ -142,6 +421,7 @@ Each run produces a versioned `edgetx-lua-api.json` with two top-level arrays: `
 | ------------- | --------------------------------------------- | -------------------------- |
 | `entityType`  | `"constant"`                                  | Always `"constant"`        |
 | `name`        | `string`                                      | Constant name, e.g. `BOLD` |
+| `type`        | `string or number`                                      | Constant type |
 | `module`      | `string`                                      | Lua namespace              |
 | `description` | `string`                                      | Doc comment if available   |
 | `sourceFile`  | `string`                                      | Origin C++ file            |
@@ -155,7 +435,7 @@ The generator maintains a `manifest.json` in the [edgetx-stubs](https://github.c
 
 ```json
 {
-  "manifestVersion": 1,
+  "manifestVersion": 2,
   "updatedAt": "2026-03-16T06:00:00Z",
   "versions": {
     "2.10": {
@@ -197,14 +477,20 @@ Generated stubs and the manifest are published to the [edgetx-stubs](https://git
 ```
 /
 └── src/
+    └── data/
+        ├── index.ts      ← store
+    └── lvgl/
+        ├── gen.ts        ← Lvgl stub generator
+        ├── index.ts      ← Lvgl parsing logic
+    └── stub-gen/
+        ├── scriptsgen.ts ← Called from `stub-gen/index.ts`. Generates .d.lua stub files from `scriptTypes.ts`
+        ├── index.ts      ← Generates .d.lua stub files from the API JSON
     ├── index.ts          ← Entry point — CLI, orchestration, JSON output
     ├── fetcher.ts        ← Downloads C++ source files from the EdgeTX GitHub repo
     ├── parser.ts         ← luadoc block extraction + C++ registration table scan
     ├── typeInferrer.ts   ← Infers LuaValueType from param names and descriptions
     ├── flagLinker.ts     ← Extracts ALL_CAPS flag references from param descriptions
     ├── scriptTypes.ts    ← Handcrafted types for edgetx script types
-    ├── stubgen.ts        ← Generates .d.lua stub files from the API JSON
-    ├── scriptsgen.ts     ← Called from `stubgen.ts`. Generates .d.lua stub files from `scriptTypes.ts`
     ├── helpers.ts        ← Helper functions
     ├── regex.ts          ← Major regular expressions
     └── types.ts          ← All TypeScript interfaces
@@ -272,7 +558,7 @@ npx tsx src/index.ts --version 2.10 --outDir ./releases/2.10 --withstubs
 Stubs are generated as part of extraction via `--withstubs` and published to [edgetx-stubs](https://github.com/JeffreyChix/edgetx-stubs). The generator produces one `.d.lua` file per Lua module, derived from the module prefix in each function's name (e.g. `lcd.drawText` → `lcd.d.lua`). Functions with no module prefix land in `edgetx.globals.d.lua`.
 
 ```
-stubs/2.10/
+stubs/2.3 to 2.10/
 ├── edgetx-lua-api.json       ← full merged API, all sources
 ├── edgetx-script-types.json  ← edgetx script types
 ├── edgetx.globals.d.lua      ← global functions (no module prefix)
@@ -282,12 +568,23 @@ stubs/2.10/
 ├── edgetx.model.d.lua        ← model.* namespace
 ├── edgetx.bitmap.d.lua       ← Bitmap.* namespace
 └── ...                       ← any future modules are handled automatically
+
+stubs/2.11 to latest/
+├── edgetx-lua-api.json       ← full merged API, all sources
+├── edgetx-script-types.json  ← edgetx script types
+├── edgetx.globals.d.lua      ← global functions (no module prefix)
+├── edgetx.constants.d.lua    ← all constants grouped by module
+├── edgetx.scripts.d.lua      ← script types
+├── edgetx.lcd.d.lua          ← lcd.* namespace
+├── edgetx.lvgl.d.lua         ← all lvgl APIs // introduces in 2.11
+├── edgetx.model.d.lua        ← model.* namespace
+├── edgetx.bitmap.d.lua       ← Bitmap.* namespace
+└── ...                       ← any future modules are handled automatically
 ```
 
 Each file uses [LuaCATS annotations](https://luals.github.io/wiki/annotations/) (`---@param`, `---@return`, `---@overload`, `---@class`, `---@deprecated` etc.) for full IntelliSense support in the Lua Language Server.
 
-![Stub preview](assets/stub-preview.png)
----
+## ![Stub preview](assets/stub-preview.png)
 
 ## CI / GitHub Actions
 

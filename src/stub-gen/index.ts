@@ -1,8 +1,10 @@
 import * as fs from "fs";
 import * as path from "path";
 import { createHash } from "crypto";
-import { LuaFunction, LuaConstant, LuaReturn, ApiDoc } from "./types";
+
 import { generateScriptStubs } from "./scriptsgen";
+import { generateLvglStubs } from "../lvgl/gen";
+import { versionGte } from "../helpers";
 
 const TYPE_MAP: Record<string, string> = {
   nil: "nil",
@@ -11,12 +13,37 @@ const TYPE_MAP: Record<string, string> = {
   integer: "integer",
   string: "string",
   table: "table",
-  function: "fun()",
+  function: "fun(...):...",
   mixed: "any",
   unknown: "any",
 };
 
-function toLuaType(t: string): string {
+const RESERVED_NAMES = [
+  "and",
+  "break",
+  "do",
+  "else",
+  "elseif",
+  "end",
+  "false",
+  "for",
+  "function",
+  "goto",
+  "if",
+  "in",
+  "local",
+  "nil",
+  "not",
+  "or",
+  "repeat",
+  "return",
+  "then",
+  "true",
+  "until",
+  "while",
+];
+
+export function toLuaType(t: string): string {
   if (!t || t === "unknown") return "any";
   return t
     .split("|")
@@ -24,7 +51,12 @@ function toLuaType(t: string): string {
     .join("|");
 }
 
-function sanitizeDesc(desc: string): string {
+export function normalizeString(str: string) {
+  if (RESERVED_NAMES.includes(str)) return "_" + str;
+  return str;
+}
+
+export function sanitizeDesc(desc: string): string {
   return desc.replace(/\r/g, "").replace(/--/g, "- -").trim();
 }
 
@@ -48,7 +80,7 @@ function makeClassName(fn: LuaFunction, returnIndex: number): string {
 }
 
 /** Emit `---@class` blocks for any table return with known fields. */
-function emitClassDefs(fn: LuaFunction): string[] {
+function emitReturnClassDefs(fn: LuaFunction): string[] {
   const lines: string[] = [];
 
   for (let i = 0; i < fn.returns.length; i++) {
@@ -79,13 +111,17 @@ function returnTypeStr(fn: LuaFunction, ret: LuaReturn, idx: number): string {
   return toLuaType(ret.type);
 }
 
-function emitParams(params: LuaFunction["parameters"]): string[] {
+function emitParams(
+  params: LuaFunction["parameters"],
+  isLvglOOP = false,
+): string[] {
   const lines: string[] = [];
 
   for (const param of params) {
     if (/[:(]/.test(param.name)) continue; // skip parser artefacts
 
-    const paramName = param.name.replace(/ +/g, "_");
+    const paramName = normalizeString(param.name.replace(/ +/g, "_"));
+    if (isLvglOOP && paramName === "parent") continue; // no parent param on lvgl OOP style
     const pType = toLuaType(param.type);
     const optMark = param.optional ? "?" : "";
     const desc = sanitizeDesc(param.description);
@@ -114,7 +150,9 @@ function emitReturns(fn: LuaFunction): string[] {
     const ret = fn.returns[i]!;
     const rType = returnTypeStr(fn, ret, i);
 
-    const rName = ret.name?.replace(/[^a-zA-Z0-9_]/g, "_") ?? "";
+    const rName = normalizeString(
+      ret.name?.replace(/[^a-zA-Z0-9_]/g, "_") ?? "",
+    );
     const desc = sanitizeDesc(ret.description);
     const [firstLine, ...restLines] = desc.split("\n");
 
@@ -137,37 +175,32 @@ function emitOverloads(fn: LuaFunction): string[] {
       : "";
 
   for (const param of fn.overloadParameters) {
-    const paramName = param.name.replace(/ +/g, "_");
+    const paramName = normalizeString(param.name.replace(/ +/g, "_"));
     const pType = toLuaType(param.type);
     const optMark = param.optional ? "?" : "";
     const desc = sanitizeDesc(param.description);
 
     const [firstLine, ...restLines] = desc.split("\n");
     lines.push(
-      firstLine
-        ? `---@param ${paramName}${optMark} ${pType} #${firstLine}`
-        : `---@param ${paramName}${optMark} ${pType}`,
+      `---@overload fun(${paramName}${optMark}: ${pType})${returnPart} ${firstLine ? `#${firstLine}` : ""}`,
     );
     for (const l of restLines) lines.push(`--- ${l}`);
-
     if (param.flagHints?.length) {
-      lines.push(
-        `--- <br><br>**Flag hints:** ${param.flagHints.join(", ")}<br><br>`,
-      );
+      lines.push(`--- **Flag hints:** ${param.flagHints.join(", ")}`);
     }
-
-    lines.push(
-      `---@overload fun(${paramName}${optMark}: ${pType})${returnPart}`,
-    );
   }
 
   return lines;
 }
 
-function emitFunction(fn: LuaFunction, nsPrefix: string): string {
+export function emitFunction(
+  fn: LuaFunction,
+  nsPrefix: string,
+  isLvglOOP = false,
+): string {
   const lines: string[] = [];
 
-  lines.push(...emitClassDefs(fn));
+  lines.push(...emitReturnClassDefs(fn));
 
   const desc = sanitizeDesc(fn.description);
   if (desc) {
@@ -187,13 +220,13 @@ function emitFunction(fn: LuaFunction, nsPrefix: string): string {
 
   if (fn.deprecated) lines.push("---@deprecated");
 
-  lines.push(...emitParams(fn.parameters));
+  lines.push(...emitParams(fn.parameters, isLvglOOP));
   lines.push(...emitOverloads(fn));
   lines.push(...emitReturns(fn));
 
   const validParams = fn.parameters
-    .filter((p) => !/[:(]/.test(p.name))
-    .map((p) => p.name.replace(/ +/g, "_"))
+    .filter((p) => !/[:(]/.test(p.name) && !(isLvglOOP && p.name === "parent"))
+    .map((p) => normalizeString(p.name.replace(/ +/g, "_")))
     .join(", ");
 
   lines.push(`function ${nsPrefix}${fn.name}(${validParams}) end`);
@@ -202,7 +235,7 @@ function emitFunction(fn: LuaFunction, nsPrefix: string): string {
   return lines.join("\n");
 }
 
-function buildFile(header: string, body: string): string {
+export function buildFile(header: string, body: string): string {
   return [
     "---@meta edgetx",
     "",
@@ -343,11 +376,17 @@ export function generateStubs(api: ApiDoc, outDir: string, version: string) {
     hash.update(content);
     generatedFiles.push(fileName);
   }
-  console.log(`  "${path.resolve(outDir)}"\n`);
 
   // ── 7. Script types ─────────────────────────────────────────────────────────
   {
     const { fileName, content } = generateScriptStubs(version, outDir);
+    generatedFiles.push(fileName);
+    hash.update(content);
+  }
+
+  // ── 8. LVGL ─────────────────────────────────────────────────────────
+  if (version !== "main" && versionGte(version, "2.11")) {
+    const { fileName, content } = generateLvglStubs(api.lvgl, outDir);
     generatedFiles.push(fileName);
     hash.update(content);
   }

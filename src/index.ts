@@ -7,14 +7,7 @@ import {
   fetchConstantMarkdownSources,
 } from "./fetcher";
 import { parseConstantMarkdownSources, parseSourceFile } from "./parser";
-import {
-  ApiDoc,
-  LuaFunction,
-  LuaConstant,
-  Availability,
-  ScreenTypeSegment,
-  StubManifest,
-} from "./types";
+import { parseLvglSourceFile } from "./lvgl";
 import {
   matchLcdFunction,
   splitIntoScreenTypeSegments,
@@ -22,7 +15,8 @@ import {
   writeManifest,
 } from "./helpers";
 import { scriptTypes } from "./scriptTypes";
-import { generateStubs } from "./stubgen";
+import { generateStubs } from "./stub-gen";
+import { EVT_CONSTANTS } from "./data";
 
 async function parseArgs() {
   const args = process.argv.slice(2);
@@ -134,23 +128,31 @@ async function main() {
   // By carrying constants forward, each version's output includes the full set
   // seen up to that point. Later definitions take precedence over earlier ones,
   // so if a constant reappears in a newer version, its updated metadata wins.
-  const allConstants: LuaConstant[] = [];
+  const allConstants: LuaConstant[] = EVT_CONSTANTS.map((c) => ({
+    name: c,
+    availableOn: "GENERAL",
+    entityType: "constant",
+    description: "",
+    type: "number",
+    module: "general",
+    sourceFile: "",
+  }));
+  let fromMdConstants: Record<string, string> = {};
 
   for (const version of versions) {
     const allFunctions: LuaFunction[] = [];
 
     let v2_3LcdFunctionsSegments: ScreenTypeSegment[] = [];
 
-    console.log("Fetching C++ source files from GitHub...");
-    const sources = await fetchAllSources(version);
+    const allSources = await fetchAllSources(version);
 
-    if (sources.size === 0) {
+    if (allSources.mainSources.size === 0) {
       console.error("No source files were loaded. Exiting.");
       process.exit(0);
     }
 
-    // --- Parse each source file ---
-    for (const [sourceFile, { content, ...source }] of sources) {
+    // --- Parse main sources ---
+    for (const [sourceFile, { content, ...source }] of allSources.mainSources) {
       console.log(`\nParsing: ${sourceFile}`);
       const { functions, constants } = parseSourceFile(
         content,
@@ -174,6 +176,52 @@ async function main() {
       stubManifest[version].sources.push(source);
     }
 
+    // --- Parse lvgl sources ---
+    let lvglCommonSettings: LuaClass | null = null;
+    const lvglConstants: LuaConstant[] = [];
+    const lvglFunctions: LuaFunction[] = [];
+    const lvglClasses: LuaClass[] = [];
+
+    const prioritySources: SourceWithContent[] = [];
+    const otherSources: SourceWithContent[] = [];
+
+    for (const [_, source] of allSources.lvglSources) {
+      if (source.name === "api.md" || source.name === "constants.md") {
+        prioritySources.push(source);
+      } else {
+        otherSources.push(source);
+      }
+    }
+
+    for (const source of prioritySources) {
+      const results = parseLvglSourceFile(
+        source,
+        lvglCommonSettings,
+        lvglConstants,
+      );
+      for (const result of results) {
+        if (result.entityType === "class" && result.name === "CommonSettings") {
+          lvglCommonSettings = result;
+        } else if (result.entityType === "constant") {
+          lvglConstants.push(result);
+        }
+      }
+      stubManifest[version].sources.push(source);
+    }
+
+    for (const source of otherSources) {
+      const results = parseLvglSourceFile(
+        source,
+        lvglCommonSettings,
+        lvglConstants,
+      );
+      for (const result of results) {
+        if (result.entityType === "function") lvglFunctions.push(result);
+        else if (result.entityType === "class") lvglClasses.push(result);
+      }
+      stubManifest[version].sources.push(source);
+    }
+
     const functions = deduplicateFunctions(
       allFunctions,
       version,
@@ -183,24 +231,48 @@ async function main() {
 
     // get constants' descriptions from lua-reference-guide/lua-api-reference/constants md files
     const constantSources = await fetchConstantMarkdownSources(version);
-    const fromMdConstants = await parseConstantMarkdownSources(constantSources);
+    fromMdConstants = {
+      ...fromMdConstants,
+      ...(await parseConstantMarkdownSources(constantSources)),
+    };
 
-    const constantsWithDescriptions = constants.map((c) => ({
+    const constantsWithDescriptions: LuaConstant[] = constants.map((c) => ({
       ...c,
       description: fromMdConstants[c.name] ?? "",
     }));
+
+    const existingNames = new Set(constants.map((c) => c.name));
+
+    for (const [name, description] of Object.entries(fromMdConstants)) {
+      if (!existingNames.has(name)) {
+        constantsWithDescriptions.push({
+          name,
+          description,
+          type: "number",
+          availableOn: "GENERAL",
+          entityType: "constant",
+          sourceFile: "",
+          module: "general",
+        });
+      }
+    }
 
     const apiDoc: ApiDoc = {
       version,
       generated: new Date().toISOString(),
       functions,
       constants: constantsWithDescriptions,
+      lvgl: {
+        functions: lvglFunctions,
+        constants: lvglConstants,
+        classes: lvglClasses,
+      },
     };
 
     const outDir = path.join(outputDirectory, version);
-    if (!fs.existsSync(outDir)) {
-      fs.mkdirSync(outDir, { recursive: true });
-    }
+
+    fs.mkdirSync(outDir, { recursive: true });
+
     const edgetxApiFile = path.join(outDir, "edgetx-lua-api.json");
     const scriptTypesFile = path.join(outDir, "edgetx-script-types.json");
 
@@ -210,7 +282,6 @@ async function main() {
     fs.writeFileSync(edgetxApiFile, edgetxApiJson, "utf-8");
     fs.writeFileSync(scriptTypesFile, scriptTypesJson, "utf-8");
 
-    console.log("\n✅ Done");
     console.log(`   Functions : ${functions.length}`);
     console.log(`   Constants : ${constants.length}`);
     console.log(`   Output    : ${path.resolve(edgetxApiFile)}`);

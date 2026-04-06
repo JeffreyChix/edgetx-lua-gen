@@ -1,9 +1,4 @@
 // Handcrafted — not auto-generated. Update this when EdgeTX docs change.
-import type {
-  LuaStructure,
-  ScriptTypeDefinition,
-  SharedTypeDefinition,
-} from "./types";
 
 export const sharedTypes: Record<string, SharedTypeDefinition> = {
   TouchState: {
@@ -126,6 +121,25 @@ export const scriptTypes: Record<string, ScriptTypeDefinition> = {
       {
         // touchState added in 2.7
         from: "2.7",
+        to: "2.10",
+        fields: {
+          init: {
+            optional: true,
+            signature: "fun()",
+            description: "Called once when the script is loaded",
+          },
+          run: {
+            optional: false,
+            signature:
+              "fun(event: number, touchState?: TouchState): string | number",
+            description:
+              "Called every cycle. If return value is zero, script will continue to run, non-zero, script will be halted.\nIf return value is a text string with the file path to a new Lua script, then the new script will be loaded and run.",
+          },
+        },
+      },
+      {
+        // lvgl added in 2.11
+        from: "2.11",
         to: null,
         fields: {
           init: {
@@ -139,6 +153,12 @@ export const scriptTypes: Record<string, ScriptTypeDefinition> = {
               "fun(event: number, touchState?: TouchState): string | number",
             description:
               "Called every cycle. If return value is zero, script will continue to run, non-zero, script will be halted.\nIf return value is a text string with the file path to a new Lua script, then the new script will be loaded and run.",
+          },
+          useLvgl: {
+            optional: true,
+            signature: "boolean",
+            description:
+              "Set to true to enable the LVGL API for this script. Required if the script uses LVGL to build its UI.",
           },
         },
       },
@@ -253,6 +273,49 @@ export const scriptTypes: Record<string, ScriptTypeDefinition> = {
       },
       {
         from: "2.4",
+        to: "2.10",
+        fields: {
+          name: {
+            optional: false,
+            signature: "string",
+            description:
+              "Widget name shown in the EdgeTX UI. Must be 10 characters or less",
+          },
+          options: {
+            optional: true,
+            signature: "WidgetOptions",
+            description:
+              "Table of up to 5 widget options. Names must be 10 characters or less with no spaces",
+          },
+          create: {
+            optional: false,
+            signature: "fun(zone: Zone, options: WidgetOptions): TWidget",
+            description:
+              "Called when the widget is created. Must return a widget table",
+            returnSample: SAMPLE_WIDGET_SCHEMA,
+          },
+          update: {
+            optional: true,
+            signature: "fun(widget: TWidget, options: WidgetOptions)",
+            description: "Called when the user changes widget options",
+          },
+          background: {
+            optional: true,
+            signature: "fun(widget: TWidget)",
+            description: "Called when the widget is not in the foreground",
+          },
+          refresh: {
+            optional: false,
+            signature:
+              "fun(widget: TWidget, event: number, touchState?: TouchState)",
+            description:
+              "Called every cycle to draw the widget. No touch support in 2.3",
+          },
+        },
+      },
+      {
+        // lvgl added in 2.11
+        from: "2.11",
         to: null,
         fields: {
           name: {
@@ -290,6 +353,12 @@ export const scriptTypes: Record<string, ScriptTypeDefinition> = {
               "fun(widget: TWidget, event: number, touchState?: TouchState)",
             description:
               "Called every cycle to draw the widget. No touch support in 2.3",
+          },
+          useLvgl: {
+            optional: true,
+            signature: "boolean",
+            description:
+              "Set to true to enable the LVGL API for this script. Required if the script uses LVGL to build its UI.",
           },
         },
       },

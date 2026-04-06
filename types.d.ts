@@ -1,4 +1,4 @@
-export type EdgeTXVersion = {
+type EdgeTXVersion = {
   generatedAt: string;
   stubHash: string;
   sources: {
@@ -7,7 +7,7 @@ export type EdgeTXVersion = {
   files: string[];
 };
 
-export interface Manifest {
+interface Manifest {
   manifestVersion: number;
   updatedAt: string;
   versions: {
@@ -15,19 +15,24 @@ export interface Manifest {
   };
 }
 
+interface TagSegment {
+  tag: string;
+  content: string;
+}
+
 interface StubEntry {
-  sources: GitHubContentItems;
+  sources: Sources;
   stubHash: string;
   files: string[];
 }
 
-export type StubManifest = Record<string, StubEntry>;
+type StubManifest = Record<string, StubEntry>;
 
-export type LuaEntityType = "function" | "constant";
+type LuaEntityType = "function" | "constant" | "variable";
 
-export type LuaValueType = string;
+type LuaValueType = string;
 
-export type ConstantGroup =
+type ConstantGroup =
   | "font"
   | "alignment"
   | "color"
@@ -37,34 +42,39 @@ export type ConstantGroup =
   | "input"
   | "other";
 
-export interface LuaTableField {
+interface LuaTableField {
   name: string;
   type: LuaValueType;
   description: string;
 }
 
-export interface LuaParam {
+interface LuaParam {
   name: string;
   type: LuaValueType;
   description: string;
   optional: boolean;
-  flagHints: string[]; // e.g. ["BOLD", "BLINK", "LEFT"]
+  fields?: LuaTableField[];
+  flagHints: string[];
 }
 
-export interface LuaReturn {
+interface LuaReturn {
   name: string;
   type: LuaValueType;
   description: string;
   fields?: LuaTableField[]; // populated when type === "table"
 }
 
-export type Availability = "COLOR_LCD" | "NON_COLOR_LCD" | "GENERAL";
+interface TableRow {
+  [header: string]: string;
+}
 
-export interface LuaFunction {
+type Availability = "COLOR_LCD" | "NON_COLOR_LCD" | "GENERAL";
+
+interface LuaFunction {
   entityType: "function";
   module: string;
   name: string;
-  signature: string;
+  signature: string | string[];
   description: string;
   parameters: LuaParam[];
   overloadParameters: LuaParam[];
@@ -77,24 +87,44 @@ export interface LuaFunction {
   sourceFile: string;
 }
 
-export interface LuaConstant {
+interface LuaConstant {
   entityType: "constant";
   module: string;
   name: string;
   description: string;
+  type: "number" | "string";
   availableOn: Availability;
-  // group: ConstantGroup;
   sourceFile: string;
 }
 
-export interface ApiDoc {
+interface LuaClass {
+  entityType: "class";
+  name: string;
+  fields: {
+    name: string;
+    type: string;
+    optional: boolean;
+    description: string;
+    notices: string[];
+    returns: LuaReturn[];
+    flagHints: string[];
+    sinceVersion: string;
+  }[];
+}
+
+interface ApiDoc {
   version: string;
   generated: string;
   functions: LuaFunction[];
   constants: LuaConstant[];
+  lvgl: {
+    functions: LuaFunction[];
+    constants: LuaConstant[];
+    classes: LuaClass[];
+  };
 }
 
-export interface GitHubContentItem {
+interface Source {
   name: string;
   path: string;
   url: string;
@@ -102,65 +132,74 @@ export interface GitHubContentItem {
   download_url: string;
 }
 
-export type GitHubContentItems = GitHubContentItem[];
+type Sources = Source[];
 
-export type ScreenTypeSegment = {
+type ScreenTypeSegment = {
   category: "COLOR_LCD" | "NON_COLOR_LCD" | "GENERAL";
   body: string[];
   elseBody?: string[];
 };
 
+type SourceWithContent = { content: string } & Source;
+
+type SourceTarget = Map<string, SourceWithContent>;
+
+type AllSources = {
+  mainSources: SourceTarget;
+  lvglSources: SourceTarget;
+};
+
 // --- --- -- --- ---
 
-export interface SharedTypeField {
+interface SharedTypeField {
   type: string;
   description: string;
   optional: boolean;
 }
 
-export interface SharedTypeDefinition {
+interface SharedTypeDefinition {
   description: string;
   fields: Record<string, SharedTypeField>;
 }
 
-export interface ScriptField {
+interface ScriptField {
   optional: boolean;
   signature: string;
   description: string;
   returnSample?: string;
 }
 
-export interface ScriptVersion {
+interface ScriptVersion {
   from: string;
   to: string | null; // null means latest
   fields: Record<string, ScriptField>;
 }
 
-export interface ScriptTypeDefinition {
+interface ScriptTypeDefinition {
   generic?: { name: string; description: string; type: string; sample: string };
   description: string;
   notices: string[];
   versions: ScriptVersion[];
 }
 
-export interface LuaClassField {
+interface LuaClassField {
   key: string | number;
   type: string;
   description: string;
   optional?: boolean;
 }
 
-export interface LuaClassDef {
+interface LuaClassDef {
   kind: "class";
   description?: string;
   fields: LuaClassField[];
 }
 
-export interface LuaAliasDef {
+interface LuaAliasDef {
   kind: "alias";
   description?: string;
   type?: string; // simple alias e.g. table<string, WidgetOption>
   union?: string[]; // union alias
 }
 
-export type LuaStructure = LuaClassDef | LuaAliasDef;
+type LuaStructure = LuaClassDef | LuaAliasDef;

@@ -1,14 +1,4 @@
 import {
-  LuaFunction,
-  LuaConstant,
-  LuaParam,
-  LuaReturn,
-  LuaTableField,
-  GitHubContentItems,
-  Availability,
-  ScreenTypeSegment,
-} from "./types";
-import {
   inferParamType,
   inferReturnType,
   isOptional,
@@ -28,6 +18,7 @@ import {
   parseMarkdown,
   getColorInfo,
   splitIntoScreenTypeSegments,
+  splitIntoSegmentsByPounds,
 } from "./helpers";
 import { LUADOC_PATTERN } from "./regex";
 import { fetchSourceFile } from "./fetcher";
@@ -38,26 +29,6 @@ export function extractLuadocBlocks(source: string): string[] {
     blocks.push(match[1]!);
   }
   return blocks;
-}
-
-// ---------------------------------------------------------------------------
-// Tag block splitter  (fix #2)
-//
-// Splits a raw luadoc block into an array of tagged segments. Each segment is:
-//   { tag: "function" | "param" | "retval" | "notice" | "status" | "text",
-//     content: string }
-//
-// Rules:
-//  - A tag line starts with @word (at any column after optional whitespace)
-//  - Everything after @word on that line AND on subsequent lines that do NOT
-//    start a new tag belongs to that tag's content.
-//  - Lines that start with # / ## / ### (markdown headings) terminate a block.
-//  - Everything before the first @tag is "text" (preamble — rare but possible).
-// ---------------------------------------------------------------------------
-
-interface TagSegment {
-  tag: string;
-  content: string;
 }
 
 function splitIntoTagSegments(doc: string): TagSegment[] {
@@ -123,6 +94,7 @@ function makeLuaConstant(
     entityType: "constant",
     availableOn,
     description: "",
+    type: "number",
     sourceFile: sourceFileName,
     name,
     module: inferModuleFromFile(sourceFileName),
@@ -231,7 +203,7 @@ interface SigParam {
 
 const IMPLICITLY_OPTIONAL_PARAMS = new Set(["flag", "flags"]);
 
-function parseSignatureParams(signature: string): {
+export function parseSignatureParams(signature: string): {
   overloadParams: string[];
   defaultParams: SigParam[];
 } {
@@ -335,7 +307,7 @@ function parseTableFieldsForAtNameFunctions(
   });
 }
 
-function parseModuleAndName(signature: string): {
+export function parseModuleAndName(signature: string): {
   module: string;
   name: string;
 } {
@@ -738,9 +710,7 @@ export function parseSourceFile(
   };
 }
 
-export async function parseConstantMarkdownSources(
-  constantSources: GitHubContentItems,
-) {
+export async function parseConstantMarkdownSources(constantSources: Sources) {
   const constantsWithDescriptions: Record<string, string> = {};
 
   for (const source of constantSources) {

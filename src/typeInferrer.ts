@@ -1,5 +1,3 @@
-import { LuaValueType } from "./types";
-
 // Known param names that reliably map to a type.
 // NOTE: These are only used as a FALLBACK when the description has no explicit
 // type hint. Description-based inference runs first and takes priority now.
@@ -93,9 +91,9 @@ export function extractTypeFromDescription(
 
   // Step 2: keyword scan in the description body (order matters — check boolean before string)
   const keywordPatterns: Array<[RegExp, LuaValueType]> = [
-    [/true\/false|true or false|\btrue\b|\bfalse\b\bboolean\b/i, "boolean"],
+    [/true\/false|true or false|\btrue\b|\bfalse\b|\bboolean\b/i, "boolean"],
     [
-      /\bnumber\b|\binteger\b|\bnum\b|\bint\b|\bnumbers\b|\bintegers\b|\bintergers\b|\bindex\b/i,
+      /\bnumber\b|\binteger\b|\bcolor\b|\bnum\b|\bint\b|\bnumbers\b|\bintegers\b|\bintergers\b|\bindex\b/i,
       "number",
     ],
     [/\bstring\b|\btext\b|\bstr\b/i, "string"],

@@ -2,7 +2,7 @@ import fs from "fs";
 import tinycolor from "tinycolor2";
 
 import { CURLY_PATTERN, LCD_FUNCTION_DEF_PATTERN, LROT_PATTERN } from "./regex";
-import { Manifest, ScreenTypeSegment, StubManifest } from "./types";
+import { SUPPORTED_MANIFEST_VERSION } from "./data";
 
 export function fetcher(url: string) {
   return fetch(url, {
@@ -164,14 +164,40 @@ export function splitIntoScreenTypeSegments(
   return segments;
 }
 
-export function readAndParseManifest() {
-  try {
-    const data = fs.readFileSync("manifest.json", "utf-8");
-    return JSON.parse(data) as Manifest;
-  } catch (err) {
-    console.error("  Error reading and parsing manifest", err);
-    return null;
+export function splitIntoSegmentsByPounds(content: string) {
+  const lines = content.split("\n");
+  const segments: TagSegment[] = [];
+
+  let currentTag: string | null = null;
+  let currentLines: string[] = [];
+
+  const flush = () => {
+    if (currentTag !== null) {
+      segments.push({
+        tag: currentTag,
+        content: currentLines.join("\n").trim(),
+      });
+    } else if (currentLines.some((l) => l.trim())) {
+      segments.push({ tag: "text", content: currentLines.join("\n").trim() });
+    }
+    currentLines = [];
+    currentTag = null;
+  };
+
+  for (const l of lines) {
+    const poundMatch = l.match(/^(#+)\s+(.*)/);
+    if (poundMatch) {
+      flush();
+      currentTag = poundMatch[2].trim();
+      continue;
+    }
+
+    currentLines.push(l);
   }
+
+  flush();
+
+  return segments;
 }
 
 export function writeManifest(stubManifest: StubManifest) {
@@ -190,7 +216,7 @@ export function writeManifest(stubManifest: StubManifest) {
   );
 
   const manifest: Manifest = {
-    manifestVersion: 1,
+    manifestVersion: SUPPORTED_MANIFEST_VERSION,
     updatedAt: new Date().toISOString(),
     versions,
   };
