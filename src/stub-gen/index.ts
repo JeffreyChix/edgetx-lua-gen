@@ -5,6 +5,7 @@ import { createHash } from "crypto";
 import { generateScriptStubs } from "./scriptsgen";
 import { generateLvglStubs } from "../lvgl/gen";
 import { versionGte } from "../helpers";
+import { BIT32_STUB_DEF } from "../data";
 
 const TYPE_MAP: Record<string, string> = {
   nil: "nil",
@@ -385,10 +386,24 @@ export function generateStubs(api: ApiDoc, outDir: string, version: string) {
   }
 
   // ── 8. LVGL ─────────────────────────────────────────────────────────
-  if (version !== "main" && versionGte(version, "2.11")) {
-    const { fileName, content } = generateLvglStubs(api.lvgl, outDir);
-    generatedFiles.push(fileName);
-    hash.update(content);
+  {
+    if (version !== "main" && versionGte(version, "2.11")) {
+      const { fileName, content } = generateLvglStubs(api.lvgl, outDir);
+      generatedFiles.push(fileName);
+      hash.update(content);
+    }
+  }
+
+  //  ── 9. bit32 ─────────────────────────────────────────────────────────
+  // Deprecated in Lua 5.3 (v2.11+) but edgetx still supports it
+  {
+    if (versionGte(version, "2.11")) {
+      const fileName = "bit32.d.lua";
+      const outPath = path.join(outDir, fileName);
+      fs.writeFileSync(outPath, BIT32_STUB_DEF, "utf8");
+      hash.update(BIT32_STUB_DEF);
+      generatedFiles.push(fileName);
+    }
   }
 
   return { files: generatedFiles, hash };
