@@ -36,12 +36,26 @@ jobs:
 
             - name: Commit if changed
               run: |
-                  git clone https://x-access-token:${{ secrets.STUBS_REPO_TOKEN }}@github.com/JeffreyChix/edgetx-stubs.git stubs-out
-                  cp -r stubs/ stubs-out/
-                  cp manifest.json stubs-out/
-                  cd stubs-out
-                  git config user.name "github-actions[bot]"
-                  git config user.email "github-actions[bot]@users.noreply.github.com"
-                  git add .
-                  git diff --cached --quiet || git commit -m "chore: regenerate stubs"
-                  git push
+                    git clone https://x-access-token:${{ secrets.STUBS_REPO_TOKEN }}@github.com/JeffreyChix/edgetx-stubs.git stubs-out
+
+                    # Bail early if stubs dir doesn't exist
+                    if [ ! -d stubs ]; then
+                        echo "No stubs directory found, skipping."
+                        exit 0
+                    fi
+
+                    cp -r stubs/ stubs-out/
+                    cp manifest.json stubs-out/
+                    cd stubs-out
+
+                    git config user.name "github-actions[bot]"
+                    git config user.email "github-actions[bot]@users.noreply.github.com"
+                    git add .
+
+                    if git diff --cached --quiet; then
+                        echo "No changes to commit, skipping push."
+                        exit 0
+                    fi
+
+                    git commit -m "chore: regenerate stubs"
+                    git push
